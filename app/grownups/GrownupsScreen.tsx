@@ -29,6 +29,7 @@ interface TutorStatus {
   model: string;
   dailyCap: number;
   usedToday: number;
+  commit: string;
 }
 
 export function GrownupsScreen() {
@@ -214,6 +215,9 @@ export function GrownupsScreen() {
                   doesn&apos;t match the written one word for word.
                 </li>
               )}
+              <li className="opacity-50">
+                Running <span className="font-[family-name:var(--font-code)]">{tutor.commit}</span>
+              </li>
             </ul>
           )}
         </section>

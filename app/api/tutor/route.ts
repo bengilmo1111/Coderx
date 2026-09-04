@@ -141,6 +141,10 @@ export async function GET() {
     model: config.model,
     dailyCap: config.dailyCap,
     usedToday: calls.day === nzDay() ? calls.count : 0,
+    // Which commit is actually serving. Vercel sets this; locally it's 'local'.
+    // Without it there is no way to tell a redeploy has landed short of
+    // guessing from behaviour.
+    commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local',
   });
 }
 

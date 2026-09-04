@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server';
 import { getLevel } from '@/curriculum/chapter1/levels';
 import { nzDay } from '@/progress/streak';
+import { tutorConfig } from '@/lib/tutorConfig';
 
 export const runtime = 'nodejs';
 
@@ -43,8 +44,7 @@ const calls = { day: '', count: 0 };
 
 const cache = new Map<string, string>();
 
-function dailyCapReached(): boolean {
-  const cap = Number(process.env.TUTOR_DAILY_CALL_CAP ?? 200);
+function dailyCapReached(cap: number): boolean {
   const today = nzDay();
   if (calls.day !== today) {
     calls.day = today;
@@ -125,10 +125,13 @@ function writtenHint(levelId: string, intent: Intent, hintsUsed: number, error?:
  * the key itself.
  */
 export async function GET() {
+  const config = tutorConfig();
   return NextResponse.json({
-    ai: Boolean(process.env.OPENROUTER_API_KEY),
-    model: process.env.TUTOR_MODEL ?? 'anthropic/claude-haiku-4.5',
-    dailyCap: Number(process.env.TUTOR_DAILY_CALL_CAP ?? 200),
+    ai: Boolean(config.key),
+    // The model actually used, after defaults — never the raw variable, so a
+    // blank one can't look like a configured one.
+    model: config.model,
+    dailyCap: config.dailyCap,
     usedToday: calls.day === nzDay() ? calls.count : 0,
   });
 }
@@ -149,15 +152,15 @@ export async function POST(request: Request) {
     source: 'written',
   };
 
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key || !level) return NextResponse.json(fallback);
+  const config = tutorConfig();
+  if (!config.key || !level) return NextResponse.json(fallback);
 
   const code = String(body.code ?? '').slice(0, MAX_CODE_CHARS);
   const cacheKey = `${body.levelId}|${intent}|${hintsUsed}|${code}|${body.error ?? ''}`;
   const cached = cache.get(cacheKey);
   if (cached) return NextResponse.json({ text: cached, source: 'ai' } satisfies TutorResponse);
 
-  if (dailyCapReached()) return NextResponse.json(fallback);
+  if (dailyCapReached(config.dailyCap)) return NextResponse.json(fallback);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -167,13 +170,13 @@ export async function POST(request: Request) {
       method: 'POST',
       signal: controller.signal,
       headers: {
-        Authorization: `Bearer ${key}`,
+        Authorization: `Bearer ${config.key}`,
         'Content-Type': 'application/json',
-        ...(process.env.OPENROUTER_SITE_URL ? { 'HTTP-Referer': process.env.OPENROUTER_SITE_URL } : {}),
-        ...(process.env.OPENROUTER_SITE_NAME ? { 'X-Title': process.env.OPENROUTER_SITE_NAME } : {}),
+        ...(config.siteUrl ? { 'HTTP-Referer': config.siteUrl } : {}),
+        ...(config.siteName ? { 'X-Title': config.siteName } : {}),
       },
       body: JSON.stringify({
-        model: process.env.TUTOR_MODEL ?? 'anthropic/claude-haiku-4.5',
+        model: config.model,
         max_tokens: 120,
         temperature: 0.7,
         messages: [

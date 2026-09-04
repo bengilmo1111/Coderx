@@ -111,3 +111,63 @@ describe('tutor status', () => {
     expect(body).not.toContain('sk-test-secret');
   });
 });
+
+/**
+ * Regression: this exact configuration was live on Vercel and silently
+ * disabled the AI tutor while reporting itself switched on.
+ */
+describe('blank environment variables are treated as unset', () => {
+  it('an empty TUTOR_MODEL falls back instead of sending model:""', async () => {
+    const { tutorConfig, DEFAULT_MODEL } = await import('@/lib/tutorConfig');
+    process.env.TUTOR_MODEL = '';
+    expect(tutorConfig().model).toBe(DEFAULT_MODEL);
+    process.env.TUTOR_MODEL = '   ';
+    expect(tutorConfig().model).toBe(DEFAULT_MODEL);
+    delete process.env.TUTOR_MODEL;
+    expect(tutorConfig().model).toBe(DEFAULT_MODEL);
+  });
+
+  it('an empty daily cap does not become zero and block every request', async () => {
+    const { tutorConfig, DEFAULT_DAILY_CAP } = await import('@/lib/tutorConfig');
+    process.env.TUTOR_DAILY_CALL_CAP = '';
+    expect(tutorConfig().dailyCap).toBe(DEFAULT_DAILY_CAP);
+    // Nor do the other ways a dashboard can produce nonsense.
+    for (const bad of ['0', '-5', 'lots', 'NaN']) {
+      process.env.TUTOR_DAILY_CALL_CAP = bad;
+      expect(tutorConfig().dailyCap).toBe(DEFAULT_DAILY_CAP);
+    }
+    process.env.TUTOR_DAILY_CALL_CAP = '50';
+    expect(tutorConfig().dailyCap).toBe(50);
+    delete process.env.TUTOR_DAILY_CALL_CAP;
+  });
+
+  it('a whitespace-only API key counts as no key at all', async () => {
+    const { tutorConfig } = await import('@/lib/tutorConfig');
+    process.env.OPENROUTER_API_KEY = '  ';
+    expect(tutorConfig().key).toBe('');
+    delete process.env.OPENROUTER_API_KEY;
+  });
+
+  it('still calls the API when the cap variable is blank', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key';
+    process.env.TUTOR_DAILY_CALL_CAP = '';
+    process.env.TUTOR_MODEL = '';
+    const realFetch = globalThis.fetch;
+    let sentModel: unknown = null;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      sentModel = JSON.parse(String(init.body)).model;
+      return Response.json({ choices: [{ message: { content: 'Good start. What is next?' } }] });
+    }) as unknown as typeof fetch;
+    try {
+      // Distinct code: identical requests are cached, and would never reach fetch.
+      const res = await post({ intent: 'stuck', levelId: 'c1l1', code: 'bark(sniff)', hintsUsed: 0 });
+      const data = (await res.json()) as { source: string };
+      expect(sentModel).toBe('anthropic/claude-haiku-4.5');
+      expect(data.source).toBe('ai');
+    } finally {
+      globalThis.fetch = realFetch;
+      delete process.env.TUTOR_DAILY_CALL_CAP;
+      delete process.env.TUTOR_MODEL;
+    }
+  });
+});

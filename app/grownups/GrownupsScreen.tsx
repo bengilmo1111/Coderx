@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ALL_LEVELS } from '@/curriculum/chapter1/levels';
 import { SKILLS, type SkillArea, type SkillId } from '@/curriculum/skills';
@@ -24,11 +24,27 @@ const AREA_LABEL: Record<SkillArea, string> = {
   literacy: 'Reading & writing (hidden in the comic)',
 };
 
+interface TutorStatus {
+  ai: boolean;
+  model: string;
+  dailyCap: number;
+  usedToday: number;
+}
+
 export function GrownupsScreen() {
   const { state, ready } = useProgress();
   const [pin, setPin] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [error, setError] = useState(false);
+  const [tutor, setTutor] = useState<TutorStatus | null>(null);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    fetch('/api/tutor')
+      .then((r) => r.json() as Promise<TutorStatus>)
+      .then(setTutor)
+      .catch(() => setTutor(null));
+  }, [unlocked]);
 
   const check = async () => {
     const res = await fetch('/api/grownups', {
@@ -167,6 +183,37 @@ export function GrownupsScreen() {
                   {!prog.completed && ' (not finished)'}
                 </li>
               ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="panel p-4">
+          <h2 className="title mb-2 text-lg">Setup</h2>
+          {tutor === null ? (
+            <p className="text-sm font-bold opacity-50">Checking…</p>
+          ) : (
+            <ul className="space-y-1 text-sm font-bold">
+              <li>
+                {tutor.ai ? '✅' : '⚠️'} AI tutor:{' '}
+                {tutor.ai ? (
+                  <>
+                    on, using <span className="font-[family-name:var(--font-code)]">{tutor.model}</span>
+                  </>
+                ) : (
+                  'off — Bolt is using the handwritten hints'
+                )}
+              </li>
+              {tutor.ai && (
+                <li className="opacity-60">
+                  {tutor.usedToday} of {tutor.dailyCap} hints used today on this server
+                </li>
+              )}
+              {tutor.ai && (
+                <li className="text-xs font-bold opacity-55">
+                  A wrong model name looks identical to this from here — ask Bolt for a hint and check it
+                  doesn&apos;t match the written one word for word.
+                </li>
+              )}
             </ul>
           )}
         </section>

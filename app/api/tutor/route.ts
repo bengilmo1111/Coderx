@@ -115,6 +115,24 @@ function writtenHint(levelId: string, intent: Intent, hintsUsed: number, error?:
   }
 }
 
+/**
+ * Is the AI tutor actually wired up?
+ *
+ * The whole route is built to degrade silently — a missing key or a wrong model
+ * slug just means handwritten hints, and nothing looks broken. That is right for
+ * Henry and useless for whoever configured it, so the parent view asks here.
+ * Reports only whether a key is present and which model is configured; never
+ * the key itself.
+ */
+export async function GET() {
+  return NextResponse.json({
+    ai: Boolean(process.env.OPENROUTER_API_KEY),
+    model: process.env.TUTOR_MODEL ?? 'anthropic/claude-haiku-4.5',
+    dailyCap: Number(process.env.TUTOR_DAILY_CALL_CAP ?? 200),
+    usedToday: calls.day === nzDay() ? calls.count : 0,
+  });
+}
+
 export async function POST(request: Request) {
   let body: TutorRequest;
   try {

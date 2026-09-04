@@ -89,3 +89,25 @@ describe('Bolt falls back to handwritten hints', () => {
     }
   });
 });
+
+/**
+ * The status endpoint the parent view uses. The route degrades silently by
+ * design, so this is the only way to tell a working key from a wrong one.
+ */
+describe('tutor status', () => {
+  it('reports the tutor off, and never leaks the key', async () => {
+    const { GET } = await import('@/app/api/tutor/route');
+    const data = (await (await GET()).json()) as Record<string, unknown>;
+    expect(data.ai).toBe(false);
+    expect(data.model).toBe('anthropic/claude-haiku-4.5');
+    expect(JSON.stringify(data)).not.toContain('sk-');
+  });
+
+  it('reports the tutor on when a key is set', async () => {
+    process.env.OPENROUTER_API_KEY = 'sk-test-secret';
+    const { GET } = await import('@/app/api/tutor/route');
+    const body = await (await GET()).text();
+    expect(JSON.parse(body).ai).toBe(true);
+    expect(body).not.toContain('sk-test-secret');
+  });
+});

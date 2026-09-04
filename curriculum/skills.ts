@@ -19,7 +19,7 @@ export interface Skill {
   year?: string;
 }
 
-export const SKILLS = {
+const SKILL_DEFS = {
   'code.sequence': { label: 'Putting steps in the right order', area: 'code' },
   'code.parameters': { label: 'Changing what a command does', area: 'code' },
   'code.loops': { label: 'Repeating things with a loop', area: 'code' },
@@ -38,7 +38,10 @@ export const SKILLS = {
   'literacy.composition': { label: 'Writing dialogue', area: 'literacy', year: 'Year 4' },
 } as const satisfies Record<string, Skill>;
 
-export type SkillId = keyof typeof SKILLS;
+export type SkillId = keyof typeof SKILL_DEFS;
+
+/** Re-typed to the wide `Skill` shape so optional fields like `year` stay visible. */
+export const SKILLS: Record<SkillId, Skill> = SKILL_DEFS;
 
 export function skillsByArea(ids: SkillId[]): Record<SkillArea, SkillId[]> {
   const out: Record<SkillArea, SkillId[]> = { code: [], maths: [], literacy: [] };

@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/*
+ * coderX house style: comic book. Fat black outlines, flat bright colour,
+ * paper-coloured ground, everything slightly wonky. Bold enough to feel like a
+ * game rather than a worksheet, calm enough to sit next to real code.
+ */
+
+@theme {
+  --color-paper: #fdf6e3;
+  --color-ink: #12100e;
+  --color-pop: #ffd23f;
+  --color-danger: #e5484d;
+  --font-comic: ui-rounded, "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --font-code: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-comic);
+  /* Stops iOS zooming when he taps a text field. */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Halftone dot ground, used behind panels. */
+.dots {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1.4px, transparent 1.5px);
+  background-size: 12px 12px;
+}
+
+/* The comic outline + hard drop shadow that everything in coderX wears. */
+.panel {
+  border: 3px solid var(--color-ink);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--color-ink);
+  background: #fffdf5;
+}
+
+.chunk {
+  border: 3px solid var(--color-ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--color-ink);
+  font-weight: 800;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+  /* Every interactive thing is thumb-sized. This is a phone-first app. */
+  min-height: 46px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chunk:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--color-ink);
+}
+
+.chunk:disabled {
+  opacity: 0.45;
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+
+.title {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  transform: rotate(-1deg);
+}
+
+/* The running line, so he can watch the pointer move. */
+@keyframes pulse-line {
+  0%, 100% { background-color: rgba(255, 210, 63, 0.85); }
+  50% { background-color: rgba(255, 210, 63, 0.45); }
+}
+.running {
+  animation: pulse-line 700ms ease-in-out infinite;
+}
+
+@keyframes pop-in {
+  from { transform: scale(0.7) rotate(-6deg); opacity: 0; }
+  to { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.pop-in { animation: pop-in 260ms cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.shake { animation: shake 320ms ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .running, .pop-in, .shake { animation: none; }
+}

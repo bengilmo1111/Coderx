@@ -39,7 +39,7 @@ export function CodeList({
   }
 
   return (
-    <ol className="flex flex-col gap-1 p-2 font-[family-name:var(--font-code)] text-[15px] leading-tight sm:text-base">
+    <ol className="flex flex-col gap-0.5 p-2 font-[family-name:var(--font-code)] text-[15px] leading-tight sm:text-base">
       {lines.map((line) => (
         <Line
           key={`${line.stmtId}-${line.isCloser ? 'end' : 'start'}`}
@@ -74,7 +74,7 @@ function Line({
     <li
       style={{ marginLeft: line.indent * 20 }}
       className={[
-        'flex min-h-[42px] cursor-pointer items-center gap-1 rounded-lg border-2 px-2 py-1',
+        'flex min-h-[40px] cursor-pointer items-center gap-1 rounded-lg border-2 px-2 py-0.5',
         selected ? 'border-ink bg-pop/60' : 'border-transparent hover:bg-black/5',
         running ? 'running' : '',
         errored ? 'border-danger bg-danger/10 shake' : '',

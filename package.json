@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:all": "vitest run && playwright test"
   },
   "dependencies": {
     "next": "15.5.4",
@@ -16,10 +18,11 @@
     "react-dom": "19.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@tailwindcss/postcss": "4.1.13",
     "@types/node": "22.10.2",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
-    "@tailwindcss/postcss": "4.1.13",
     "tailwindcss": "4.1.13",
     "typescript": "5.7.2",
     "vitest": "3.2.4"

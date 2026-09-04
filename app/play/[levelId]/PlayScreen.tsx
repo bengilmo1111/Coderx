@@ -28,7 +28,25 @@ import { getLevel, nextLevelId } from '@/curriculum/chapter1/levels';
 import { awardsFor, rankFor, type Award } from '@/progress/xp';
 import { addMinutes, collect, collectCard, levelProgress, recordSkillAttempt, setLevelProgress } from '@/progress/store';
 
-const SLOT_FOR: Record<string, SlotKind> = { count: 'number', cond: 'condition' };
+const DIRECTIONS = ['up', 'down', 'left', 'right'];
+
+/**
+ * Which picker belongs to this slot.
+ *
+ * Reads the argument out of the tree it is given rather than closing over
+ * component state — an earlier version consulted the picker that was already
+ * open, so tapping "move" offered a number wheel instead of the direction pad.
+ */
+function slotFor(program: Program, stmtId: string, index: ArgIndex): SlotKind {
+  const arg = getArg(program, stmtId, index);
+  if (arg?.kind === 'hole') return arg.slot;
+  if (index === 'count') return 'number';
+  if (index === 'cond') return 'condition';
+  if (arg?.kind === 'str') return 'text';
+  if (arg?.kind === 'num') return 'number';
+  if (arg?.kind === 'ident') return DIRECTIONS.includes(arg.name) ? 'direction' : 'character';
+  return 'number';
+}
 
 export function PlayScreen({ levelId }: { levelId: string }) {
   const level = getLevel(levelId)!;
@@ -93,24 +111,14 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     setProgram(insertStmt(program, selection, stmt));
     // Land the cursor on the new line so the next tap continues from here.
     setSelection({ stmtId: stmt.id, closer: false });
+    // Open the right picker straight away — one tap to place, one to fill.
     const hole = firstHole([stmt]);
-    if (hole) setPicker({ stmtId: hole.stmtId, index: hole.index, slot: slotOf(hole.index) });
-  };
-
-  const slotOf = (index: ArgIndex): SlotKind => {
-    if (typeof index !== 'number') return SLOT_FOR[index] ?? 'number';
-    const arg = getArg(program, picker?.stmtId ?? '', index);
-    return arg?.kind === 'hole' ? arg.slot : 'number';
+    if (hole) setPicker({ stmtId: hole.stmtId, index: hole.index, slot: slotFor([stmt], hole.stmtId, hole.index) });
   };
 
   const openPicker = (stmtId: string, index: ArgIndex) => {
-    const arg = getArg(program, stmtId, index);
-    let slot: SlotKind = 'number';
-    if (arg?.kind === 'hole') slot = arg.slot;
-    else if (typeof index !== 'number') slot = SLOT_FOR[index] ?? 'number';
-    else if (arg?.kind === 'str') slot = 'text';
-    else if (arg?.kind === 'ident') slot = ['up', 'down', 'left', 'right'].includes(arg.name) ? 'direction' : 'character';
-    if (slot === 'condition') return; // conditions come whole, from the brick
+    const slot = slotFor(program, stmtId, index);
+    if (slot === 'condition') return; // conditions arrive whole, from the brick
     setPicker({ stmtId, index, slot });
   };
 
@@ -151,7 +159,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     if (hole) {
       sfx.oops();
       setBanner(new CoderXError("There's still an empty box in your code. I can't run a gap!", { tryThis: 'Tap the yellow box and fill it in.' }));
-      setPicker({ stmtId: hole.stmtId, index: hole.index, slot: slotOf(hole.index) });
+      setPicker({ stmtId: hole.stmtId, index: hole.index, slot: slotFor(program, hole.stmtId, hole.index) });
       return;
     }
     settled.current = false;
@@ -169,42 +177,47 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   }, [runResult]);
 
   // Decide the outcome once the animation has actually finished, so he sees
-  // what happened before he's told about it.
+  // what happened before he is told about it.
   useEffect(() => {
     if (!runResult || !playback.done || settled.current || !ready) return;
     settled.current = true;
 
     const won = !runResult.error && level.goal({ world: runResult.finalWorld, saids: runResult.saids });
     const size = countStmts(program);
+    const before = levelProgress(state, level.id);
 
     if (runResult.error) {
       sfx.oops();
       setBanner(runResult.error);
     }
 
+    // Worked out here rather than inside the updater: React invokes updaters
+    // more than once, so they have to stay pure.
+    const earned = won
+      ? awardsFor({
+          base: level.reward.xp,
+          typedLines,
+          size,
+          par: level.par,
+          hintsUsed,
+          tookDare,
+          firstTime: !before.completed,
+        })
+      : null;
+
     update((p) => {
-      const before = levelProgress(p, level.id);
+      const prev = levelProgress(p, level.id);
       let next = setLevelProgress(p, level.id, {
-        attempts: before.attempts + 1,
-        completed: before.completed || won,
-        hintsUsed: before.hintsUsed + hintsUsed,
-        typedItHimself: before.typedItHimself || typedLines > 0,
-        bestSize: won ? Math.min(before.bestSize ?? Infinity, size) : before.bestSize,
+        attempts: prev.attempts + 1,
+        completed: prev.completed || won,
+        hintsUsed: prev.hintsUsed + hintsUsed,
+        typedItHimself: prev.typedItHimself || typedLines > 0,
+        bestSize: won ? Math.min(prev.bestSize ?? Infinity, size) : prev.bestSize,
       });
       next = recordSkillAttempt(next, level.skills, won);
       next = { ...next, typedLines: next.typedLines + typedLines };
-      if (!won) return next;
+      if (!earned) return next;
 
-      const earned = awardsFor({
-        base: level.reward.xp,
-        typedLines,
-        size,
-        par: level.par,
-        hintsUsed,
-        tookDare,
-        firstTime: !before.completed,
-      });
-      setAwards(earned);
       next = { ...next, xp: next.xp + earned.reduce((n, a) => n + a.xp, 0) };
       next = collect(next, level.reward.sticker);
       if (typedLines > 0) next = collect(next, 'typing-trophy');
@@ -212,7 +225,13 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       return next;
     });
 
-    if (won) sfx.win();
+    if (earned) {
+      setAwards(earned);
+      sfx.win();
+    }
+    // `state` is read for the pre-run snapshot only; re-running on every save
+    // would re-settle the same run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playback.done, runResult, ready, level, program, hintsUsed, typedLines, tookDare, update]);
 
   const replay = () => {
@@ -270,14 +289,19 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Stage */}
         <section className="flex min-h-0 shrink-0 flex-col gap-2 p-2 lg:flex-1">
-          <div className="h-[32dvh] min-h-40 lg:h-auto lg:flex-1">
+          <div className="h-[27dvh] min-h-36 lg:h-auto lg:max-h-[62dvh] lg:flex-1">
             <Stage world={world} frames={runResult?.frames ?? []} index={playback.index} t={playback.t} />
           </div>
 
-          <div className="panel flex items-center gap-2 px-3 py-2">
-            <span className="text-lg">🎯</span>
-            <p className="min-w-0 flex-1 text-sm font-bold leading-snug">{level.goalText}</p>
-            <button type="button" onClick={() => setShowBrief(true)} className="chunk bg-white px-3 text-sm">
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-sm">🎯</span>
+            <p className="min-w-0 flex-1 truncate text-[13px] font-bold">{level.goalText}</p>
+            <button
+              type="button"
+              onClick={() => setShowBrief(true)}
+              className="chunk min-h-9 bg-white px-2 text-xs"
+              title="Read the case file again"
+            >
               📄
             </button>
           </div>

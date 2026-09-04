@@ -1,0 +1,12 @@
+# Nothing here is needed to build or run the app; keeping it out of the upload
+# makes deploys smaller and build traces faster.
+tests/
+e2e/
+playwright.config.ts
+playwright-report/
+test-results/
+screenshots/
+vitest.config.ts
+.agents/
+.claude/
+docs/

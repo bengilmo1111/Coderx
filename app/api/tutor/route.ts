@@ -65,7 +65,23 @@ function systemPrompt(
   sim: Simulation,
 ) {
   const commands = level.bricks.join(', ');
-  const ladder = level.hints[Math.min(hintsUsed, level.hints.length - 1)];
+  const rung = Math.min(hintsUsed, level.hints.length - 1);
+
+  // When the code already works, the hint ladder is the wrong tool entirely —
+  // every rung assumes he is stuck, and following one tells a child his correct
+  // answer is wrong.
+  const guidance = sim.solved
+    ? [
+        'HIS CODE ALREADY WORKS. Do not hint, do not ask leading questions, do not imply anything is missing.',
+        'Tell him it looks right and to press Run and watch it. You may add one playful dare afterwards.',
+      ]
+    : [
+        'THE HINT LADDER for this level, written by the person who built it:',
+        ...level.hints.map((h, i) => `  ${i}. "${h}"`),
+        `Aim at rung ${rung}. But if his code ALREADY does what a rung says, that rung is finished —`,
+        'move to the earliest one he has not done yet, and never go more than one rung past your aim.',
+        'Say it in your own voice, shaped around his actual code. Never contradict the ladder.',
+      ];
 
   return [
     'You are BOLT: a friendly robot in a comic book who is mostly a toaster.',
@@ -97,9 +113,7 @@ function systemPrompt(
     `HINT LEVEL: ${Math.min(hintsUsed, 2)} of 2. At 0 give the gentlest possible nudge (a question).`,
     'At 1 be more concrete about what to change. At 2 you may show ONE line of code.',
     '',
-    'A CORRECT HINT FOR WHERE HE IS, written by the person who built this level:',
-    `"${ladder}"`,
-    'Say that idea in your own voice, shaped around what his code actually does. Never contradict it.',
+    ...guidance,
     '',
     intentBrief(intent),
   ].join('\n');

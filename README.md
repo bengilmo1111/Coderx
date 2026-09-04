@@ -141,6 +141,33 @@ did it break?*, *Make it sillier*, *What did I learn?*. That's a safety decision
 "Make it sillier" is the important one — it's the only button that invites him
 *past* the level rather than through it.
 
+### Bolt is grounded, not guessing
+
+Before asking for a hint, the route **runs his actual code against the actual
+level** and hands the result to the model: whether it already solves it, how
+much rubbish is binned, where Sniff finished, any error. It also gets the board
+layout, the commands that exist in this level, and the level's own handwritten
+hint ladder to paraphrase.
+
+This isn't polish. Given only a level title, the model confidently told Henry
+that a *correct* solution had "only covered three squares" and suggested moving
+down on a board one row tall. Owning the interpreter means we can just tell it
+the truth, which leaves the model doing the part it's good at — voice and
+personalisation — while the content stays right by construction. When the
+simulation says the code already works, the hint ladder is dropped entirely,
+because every rung assumes he's stuck and following one would tell a child his
+correct answer is wrong.
+
+### Checking it's actually on
+
+`GET /api/tutor` reports whether a key is present, the model in use after
+defaults, the daily cap, hints used today, and the commit being served. The
+`/grownups` view shows it as a Setup line. This exists because the route
+degrades silently by design — and on the first deploy it earned its keep
+immediately: blank values for `TUTOR_MODEL` and `TUTOR_DAILY_CALL_CAP` in the
+dashboard had disabled the AI tutor entirely while it reported itself
+configured (`??` doesn't fall back on `""`, and `Number('')` is `0`).
+
 ## Deploying
 
 Vercel, as planned — the tutor route is exactly what its serverless functions

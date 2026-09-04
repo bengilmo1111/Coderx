@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { getLevel } from '@/curriculum/chapter1/levels';
 import { nzDay } from '@/progress/streak';
 import { tutorConfig } from '@/lib/tutorConfig';
+import { tidyForAChild } from '@/lib/tutorText';
 
 export const runtime = 'nodejs';
 
@@ -62,7 +63,9 @@ function systemPrompt(level: NonNullable<ReturnType<typeof getLevel>>, intent: I
     'You are helping one 8-year-old boy in New Zealand learn to code. His name is not known to you; call him "you".',
     '',
     'HARD RULES:',
-    '- Reply in at most 30 words. One or two short sentences. He reads Dog Man, so keep it simple but never babyish.',
+    '- Reply in at most 30 words. ONE short paragraph, never two. He reads Dog Man, so keep it simple but never babyish.',
+    '- Write PLAIN TEXT ONLY. No markdown, no backticks, no asterisks, no code blocks, no bullet points. Your words appear in a speech bubble.',
+    '- Ask at most one question. Do not ask a question and then answer it yourself.',
     '- NEVER write out his whole solution. Never give more than ONE line of code, and only at the highest hint level.',
     '- Always mention one specific thing he actually did in his code before you nudge him.',
     '- Use New Zealand spelling (colour, practise, maths).',
@@ -88,7 +91,12 @@ function intentBrief(intent: Intent): string {
     case 'broke':
       return 'HE TAPPED: "Why did it break?". Explain the error in his own code, in plain words, and what to try.';
     case 'sillier':
-      return 'HE TAPPED: "Make it sillier". Dare him to add something funny using the commands he already has. Be playful and specific.';
+      return [
+        'HE TAPPED: "Make it sillier".',
+        'This is NOT a request for help. Do NOT hint at the goal, mention what is missing, or help him finish the level in any way.',
+        'Dare him to add one funny, pointless thing using commands he already has — a bark in the wrong place, a silly line of dialogue, a wildly too-big repeat.',
+        'Be playful and specific, and make it sound like a dare he would be daft not to take.',
+      ].join(' ');
     case 'learned':
       return 'HE TAPPED: "What did I just learn?". Name the one idea in plain words and why it is useful. Be proud of him.';
   }
@@ -201,10 +209,10 @@ export async function POST(request: Request) {
     const text = data.choices?.[0]?.message?.content?.trim();
     if (!text) return NextResponse.json(fallback);
 
-    // Belt and braces: cap the length even if the model ignores the word limit.
-    const clipped = text.length > 320 ? `${text.slice(0, 317)}…` : text;
-    cache.set(cacheKey, clipped);
-    return NextResponse.json({ text: clipped, source: 'ai' } satisfies TutorResponse);
+    const clean = tidyForAChild(text);
+    if (!clean) return NextResponse.json(fallback);
+    cache.set(cacheKey, clean);
+    return NextResponse.json({ text: clean, source: 'ai' } satisfies TutorResponse);
   } catch {
     return NextResponse.json(fallback);
   } finally {

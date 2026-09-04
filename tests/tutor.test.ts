@@ -171,3 +171,57 @@ describe('blank environment variables are treated as unset', () => {
     }
   });
 });
+
+/**
+ * Bolt speaks in a speech bubble. Markdown that leaks through reads as the app
+ * being broken — this was visible in the first live replies.
+ */
+describe('replies are cleaned for a comic panel', () => {
+  it('strips backticks and asterisks', async () => {
+    const { tidyForAChild } = await import('@/lib/tutorText');
+    expect(tidyForAChild("Nice! You've got `repeat 2` working, make it *bigger*.")).toBe(
+      "Nice! You've got repeat 2 working, make it bigger.",
+    );
+  });
+
+  it('unwraps a code fence rather than deleting the line inside it', async () => {
+    const { tidyForAChild } = await import('@/lib/tutorText');
+    const out = tidyForAChild('Try this:\n```\nmove(sniff, right, 2)\n```');
+    expect(out).toContain('move(sniff, right, 2)');
+    expect(out).not.toContain('`');
+  });
+
+  it('collapses a two-paragraph answer into one', async () => {
+    const { tidyForAChild } = await import('@/lib/tutorText');
+    expect(tidyForAChild('You used repeat.\n\nNow, how many squares?')).toBe(
+      'You used repeat. Now, how many squares?',
+    );
+  });
+
+  it('trims a long reply at a sentence end, not mid-word', async () => {
+    const { tidyForAChild, MAX_REPLY_CHARS } = await import('@/lib/tutorText');
+    const long = `${'You did really well there and I am proud of you. '.repeat(8)}And another thing entirely`;
+    const out = tidyForAChild(long);
+    expect(out.length).toBeLessThanOrEqual(MAX_REPLY_CHARS);
+    expect(out.endsWith('.')).toBe(true);
+  });
+
+  it('leaves an already-tidy reply alone', async () => {
+    const { tidyForAChild } = await import('@/lib/tutorText');
+    const good = 'Nice grab. How far away is the bin?';
+    expect(tidyForAChild(good)).toBe(good);
+  });
+
+  it('cleans the reply on the way out of the route', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key';
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      Response.json({ choices: [{ message: { content: 'Good `grab`.\n\nNow *move* right.' } }] })) as typeof fetch;
+    try {
+      const res = await post({ intent: 'stuck', levelId: 'c1l2', code: 'grab(sniff)', hintsUsed: 0 });
+      expect(((await res.json()) as { text: string }).text).toBe('Good grab. Now move right.');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});

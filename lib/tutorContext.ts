@@ -1,0 +1,101 @@
+/**
+ * Grounding for the tutor.
+ *
+ * Bolt was giving confidently wrong hints — telling Henry a correct solution
+ * had "only covered three squares", and suggesting directions that walk into a
+ * fence. The model had the level title and nothing else, so it was guessing at
+ * a world it could not see.
+ *
+ * coderX can simply tell it. We own the interpreter, so before asking for a
+ * hint we run his actual code against the actual level and hand over what
+ * happened. A tutor that knows whether the code works is a different tutor.
+ */
+
+import { parse } from '@/lang/parser';
+import { CoderXError } from '@/lang/errors';
+import { runProgram } from '@/runtime/run';
+import { CHARACTERS, type WorldState } from '@/runtime/world';
+import type { Level } from '@/curriculum/types';
+
+/** Compact, factual description of the board. Columns are 0-based from the left. */
+export function describeWorld(world: WorldState): string {
+  const cols = (predicate: (x: number, y: number) => boolean) => {
+    const found: string[] = [];
+    for (let y = 0; y < world.h; y += 1)
+      for (let x = 0; x < world.w; x += 1) if (predicate(x, y)) found.push(String(x));
+    return found.length ? found.join(', ') : 'none';
+  };
+
+  const bins = cols((x, y) => world.tiles[y][x] === 'bin');
+  const rubbish = world.rubbish.map((r) => String(r.x)).join(', ') || 'none';
+  const who = Object.entries(world.sprites)
+    .map(([name, s]) => `"${name}" (${CHARACTERS[s.character].label}) starts at column ${s.x}`)
+    .join('; ');
+
+  return [
+    `The board is ${world.w} squares wide. Columns are numbered from 0 at the far left to ${world.w - 1} at the right.`,
+    `${who}. Everything happens along one row, so only left and right matter.`,
+    `Bins are at column(s): ${bins}. Rubbish is at column(s): ${rubbish}.`,
+    'Walking past column ' + (world.w - 1) + ' or before column 0 hits the fence.',
+  ].join(' ');
+}
+
+export interface Simulation {
+  /** False when the code could not even be read (usually an unfilled hole). */
+  ran: boolean;
+  solved: boolean;
+  error?: string;
+  binned: number;
+  needed: number;
+  endedAt?: number;
+  statements: number;
+}
+
+/** Runs his code against the real level, exactly as pressing Run would. */
+export function simulate(level: Level, code: string): Simulation {
+  const world = level.makeWorld();
+  const needed = world.rubbish.length;
+  if (!code.trim()) return { ran: false, solved: false, binned: 0, needed, statements: 0 };
+
+  try {
+    const program = parse(code);
+    const result = runProgram(program, level.makeWorld());
+    const solved = !result.error && level.goal({ world: result.finalWorld, saids: result.saids });
+    const sniff = result.finalWorld.sprites.sniff;
+    return {
+      ran: true,
+      solved,
+      error: result.error?.boltSays,
+      binned: result.finalWorld.binned,
+      needed,
+      endedAt: sniff?.x,
+      statements: program.length,
+    };
+  } catch (e) {
+    return {
+      ran: false,
+      solved: false,
+      error: e instanceof CoderXError ? e.boltSays : undefined,
+      binned: 0,
+      needed,
+      statements: 0,
+    };
+  }
+}
+
+export function describeOutcome(sim: Simulation): string {
+  if (!sim.ran) {
+    return sim.error
+      ? `His code cannot run yet: ${sim.error}`
+      : 'He has not written anything that can run yet.';
+  }
+  const parts = [
+    sim.solved
+      ? 'HIS CODE ALREADY SOLVES THIS LEVEL. Do not suggest changes to make it work — it works.'
+      : 'His code does not solve the level yet.',
+    `Rubbish binned: ${sim.binned} of ${sim.needed}.`,
+  ];
+  if (sim.endedAt !== undefined) parts.push(`Sniff finished at column ${sim.endedAt}.`);
+  if (sim.error) parts.push(`It stopped with: ${sim.error}`);
+  return parts.join(' ');
+}

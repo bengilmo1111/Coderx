@@ -17,6 +17,7 @@ import { getLevel } from '@/curriculum/chapter1/levels';
 import { nzDay } from '@/progress/streak';
 import { tutorConfig } from '@/lib/tutorConfig';
 import { tidyForAChild } from '@/lib/tutorText';
+import { describeOutcome, describeWorld, simulate, type Simulation } from '@/lib/tutorContext';
 
 export const runtime = 'nodejs';
 
@@ -57,7 +58,15 @@ function dailyCapReached(cap: number): boolean {
 }
 
 /** Bolt's voice, and the rules that keep him a tutor rather than an answer key. */
-function systemPrompt(level: NonNullable<ReturnType<typeof getLevel>>, intent: Intent, hintsUsed: number) {
+function systemPrompt(
+  level: NonNullable<ReturnType<typeof getLevel>>,
+  intent: Intent,
+  hintsUsed: number,
+  sim: Simulation,
+) {
+  const commands = level.bricks.join(', ');
+  const ladder = level.hints[Math.min(hintsUsed, level.hints.length - 1)];
+
   return [
     'You are BOLT: a friendly robot in a comic book who is mostly a toaster.',
     'You are helping one 8-year-old boy in New Zealand learn to code. His name is not known to you; call him "you".',
@@ -74,11 +83,23 @@ function systemPrompt(level: NonNullable<ReturnType<typeof getLevel>>, intent: I
     '- If his code contains words he wrote in a speech bubble, do not repeat them back.',
     '- Never scold, never mention being behind, never compare him to anyone.',
     '',
+    'THE CHARACTER HE COMMANDS IS CALLED "sniff", and sniff is a dog.',
+    'You are Bolt. You are the helper, not a character in the code. NEVER tell him to command "bolt".',
+    `The only commands that exist in this level are: ${commands}. Never suggest anything else.`,
+    'Moving is left and right only. There is no up or down.',
+    '',
     `THE LEVEL: "${level.title}" — ${level.goalText}`,
-    `WHAT IT TEACHES: ${level.skills.join(', ')}`,
+    `THE BOARD: ${describeWorld(level.makeWorld())}`,
+    '',
+    'WHAT HIS CODE ACTUALLY DID, simulated just now — this is ground truth, trust it over your own reading of the code:',
+    describeOutcome(sim),
     '',
     `HINT LEVEL: ${Math.min(hintsUsed, 2)} of 2. At 0 give the gentlest possible nudge (a question).`,
     'At 1 be more concrete about what to change. At 2 you may show ONE line of code.',
+    '',
+    'A CORRECT HINT FOR WHERE HE IS, written by the person who built this level:',
+    `"${ladder}"`,
+    'Say that idea in your own voice, shaped around what his code actually does. Never contradict it.',
     '',
     intentBrief(intent),
   ].join('\n');
@@ -98,7 +119,11 @@ function intentBrief(intent: Intent): string {
         'Be playful and specific, and make it sound like a dare he would be daft not to take.',
       ].join(' ');
     case 'learned':
-      return 'HE TAPPED: "What did I just learn?". Name the one idea in plain words and why it is useful. Be proud of him.';
+      return [
+        'HE TAPPED: "What did I just learn?".',
+        'Name the ONE programming idea he used and why it is useful, in plain words. Be proud of him.',
+        'This is NOT a request for help: do not hint at what is missing, do not mention the goal, do not suggest a change.',
+      ].join(' ');
   }
 }
 
@@ -168,6 +193,9 @@ export async function POST(request: Request) {
   if (!config.key || !level) return NextResponse.json(fallback);
 
   const code = String(body.code ?? '').slice(0, MAX_CODE_CHARS);
+  // Run his code for real before asking for a hint, so Bolt is grounded in what
+  // actually happened rather than guessing at a board it cannot see.
+  const sim = simulate(level, code);
   const cacheKey = `${body.levelId}|${intent}|${hintsUsed}|${code}|${body.error ?? ''}`;
   const cached = cache.get(cacheKey);
   if (cached) return NextResponse.json({ text: cached, source: 'ai' } satisfies TutorResponse);
@@ -192,7 +220,7 @@ export async function POST(request: Request) {
         max_tokens: 120,
         temperature: 0.7,
         messages: [
-          { role: 'system', content: systemPrompt(level, intent, hintsUsed) },
+          { role: 'system', content: systemPrompt(level, intent, hintsUsed, sim) },
           {
             role: 'user',
             content: [
@@ -200,7 +228,7 @@ export async function POST(request: Request) {
               '```',
               code || '(nothing yet)',
               '```',
-              body.error ? `The error he got: ${body.error}` : 'It ran without an error.',
+              body.error ? `The error he saw on screen: ${body.error}` : 'He did not see an error.',
             ].join('\n'),
           },
         ],

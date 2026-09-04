@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { loadCastArt } from '@/runtime/art';
 import { drawScene } from '@/runtime/render';
 import type { Frame, WorldState } from '@/runtime/world';
 
@@ -21,6 +22,12 @@ export function Stage({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const [artVersion, setArtVersion] = useState(0);
+
+  // Optional character art. Repaints once it arrives so a still canvas updates.
+  useEffect(() => {
+    loadCastArt(() => setArtVersion((n) => n + 1));
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -48,7 +55,7 @@ export function Stage({
     const ro = new ResizeObserver(draw);
     ro.observe(box);
     return () => ro.disconnect();
-  }, [world, frames, index, t]);
+  }, [world, frames, index, t, artVersion]);
 
   return (
     <div ref={boxRef} className="panel dots h-full w-full overflow-hidden">

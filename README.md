@@ -114,6 +114,27 @@ configuration at all the app runs fully, using each level's handwritten hints.
 cap reached, dead network — every path falls through to the level's handwritten
 hint ladder. coderX must never look broken because a third party is.
 
+### Cost
+
+A hint is one small request: a fixed system prompt, his current code, and a
+reply capped at 120 tokens. At Haiku pricing that lands around **$0.001 per
+hint**, so the default cap of 200 calls a day is roughly **20-30 cents** — well
+inside a $3 daily limit at OpenRouter, with a lot of headroom for a child who
+gets unusually stuck.
+
+Two backstops sit under that, and they are independent:
+
+- `TUTOR_DAILY_CALL_CAP` in the app. Best-effort only — serverless instances
+  don't share the counter, so treat it as a seatbelt against a runaway loop
+  rather than a billing control.
+- **The daily limit on the OpenRouter key itself**, which is the real one. When
+  it is reached OpenRouter returns an error, and the route falls through to the
+  handwritten hints exactly as it does for any other failure. Henry notices
+  nothing.
+
+Identical requests are cached in-process, so repeatedly tapping "I'm stuck" on
+unchanged code costs nothing after the first.
+
 He talks to Bolt through four fixed buttons, not a chat box: *I'm stuck*, *Why
 did it break?*, *Make it sillier*, *What did I learn?*. That's a safety decision
 (an 8-year-old and an open conversation are a different product) and a cost one.
@@ -125,13 +146,23 @@ did it break?*, *Make it sillier*, *What did I learn?*. That's a safety decision
 Vercel, as planned — the tutor route is exactly what its serverless functions
 are for, and the free tier covers one child comfortably.
 
-```bash
-vercel
-```
+The repo is the deploy path. `main` carries the app, so:
 
-Set the environment variables above in the Vercel project settings. No database
-is needed yet: progress lives in `localStorage` behind the single interface in
-`progress/store.ts`.
+1. In the Vercel dashboard, **Add New → Project**, and import
+   `bengilmo1111/Coderx`.
+2. Take every default. It is a stock Next.js App Router project — no build
+   settings to change, and no `vercel.json` needed.
+3. Add the environment variables above under **Settings → Environment
+   Variables**. `OPENROUTER_API_KEY` and `GROWNUP_PIN` are the two that matter;
+   set them for Production and Preview both.
+4. Redeploy once after adding them — env vars are read at request time for the
+   tutor route, but a fresh deploy avoids any doubt.
+
+After that, pushing to `main` deploys, and any other branch gets a preview URL —
+which is a good way to try a new chapter before it reaches Henry.
+
+No database is needed yet: progress lives in `localStorage` behind the single
+interface in `progress/store.ts`.
 
 ---
 
@@ -140,7 +171,9 @@ is needed yet: progress lives in `localStorage` behind the single interface in
 - NZ spelling throughout, including in the language itself (`colour`, not `color`).
 - Year levels, not US grades. Pitched at about Year 4.
 - Half the cast is endemic: a kea that dismantles machinery for fun, a weka that
-  steals the evidence.
+  steals the evidence. They render as emoji until real artwork is dropped in —
+  see [`public/cast/README.md`](public/cast/README.md), which needs no code
+  change.
 - **Streak day boundaries are `Pacific/Auckland`, never UTC.** A UTC boundary
   would roll his streak over at about 1pm on a school day and silently break it.
   There's a regression test for this, and one for the NZDT changeover.
@@ -157,6 +190,13 @@ streak must not become one more thing he is failing at.
 (🍕🚀🐶🍕). He uses a shared family computer and a phone, so no device is truly
 his and progress has to follow him. `progress/store.ts` is already the single
 seam this goes behind.
+
+Then the **memory loop** — see [`docs/memory-loop.md`](docs/memory-loop.md).
+coderX watches what he likes, avoids, finds easy and finds hard, and feeds that
+back into what the game offers next and what Bolt already knows before he asks.
+The design note leads with the trap, because a stored conclusion that "he's bad
+at loops" would rebuild the coding club problem inside the thing meant to fix
+it.
 
 **Build 3** — Free Play using everything he's collected (a collection he can't
 play with is a dead collection), a share link for when *he* chooses to show

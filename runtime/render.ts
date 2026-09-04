@@ -6,6 +6,7 @@
  * All the timing lives in usePlayback, so this stays easy to reason about.
  */
 
+import { artFor } from './art';
 import { CHARACTERS, type Effect, type Frame, type WorldState } from './world';
 
 const INK = '#12100e';
@@ -241,7 +242,15 @@ export function drawScene(
     ctx.ellipse(cx, cy + L.cell * 0.3, L.cell * 0.26, L.cell * 0.09, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    glyph(ctx, CHARACTERS[s.character].glyph, cx, cy - bob, L.cell * 0.62);
+
+    // Artwork if it has been dropped into /public/cast, emoji otherwise.
+    const art = artFor(s.character);
+    const size = L.cell * 0.62;
+    if (art) {
+      ctx.drawImage(art, cx - size / 2, cy - bob - size / 2, size, size);
+    } else {
+      glyph(ctx, CHARACTERS[s.character].glyph, cx, cy - bob, size);
+    }
   }
 
   // Effects belong to the frame they were produced in.

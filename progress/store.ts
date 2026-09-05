@@ -68,7 +68,9 @@ class LocalStore implements ProgressStore {
   }
   save(state: ProgressState) {
     try {
-      window.localStorage.setItem(KEY, JSON.stringify(state));
+      // Stamped on every write, so merging two devices can tell which one last
+      // touched a field that has no "better" value — his half-written code.
+      window.localStorage.setItem(KEY, JSON.stringify({ ...state, updatedAt: new Date().toISOString() }));
     } catch {
       /* Private browsing, quota, storage disabled — never break the game over it. */
     }

@@ -8,19 +8,39 @@ import { STICKERS } from '@/progress/stickers';
 import { isUnlocked, levelProgress } from '@/progress/store';
 import { nextRank, rankFor, rankProgress } from '@/progress/xp';
 import { useProgress } from '@/lib/useProgress';
+import { EmojiPin } from '@/components/EmojiPin';
+import { createProfile, signIn } from '@/lib/sync';
 import { sfx } from '@/lib/sound';
 
 const AGENT_NAMES = ['Turbo', 'Chomp', 'Bolt Jr', 'Fang', 'Rocket', 'Spud', 'Nitro', 'Biscuit'];
 const HQ_NAMES = ['The Shed', 'Bin HQ', 'The Bunker', 'Sock Drawer', 'The Kennel', 'Base Alpha'];
 
 export function HomeScreen() {
-  const { state, update, ready, streakOutcome } = useProgress();
+  const { state, update, ready, streakOutcome, sync, refreshSync } = useProgress();
   const [tab, setTab] = useState<'capers' | 'stickers' | 'cards'>('capers');
   const [renaming, setRenaming] = useState(false);
 
   if (!ready) return <div className="p-6 text-center font-black opacity-40">Loading HQ…</div>;
 
-  if (!state.agentName) return <FirstRun onDone={(agentName, hqName) => update((p) => ({ ...p, agentName, hqName }))} />;
+  if (!state.agentName) {
+    return (
+      <FirstRun
+        needsCode={sync.enabled}
+        onDone={async (agentName, hqName, pin) => {
+          update((p) => ({ ...p, agentName, hqName }));
+          if (sync.enabled && pin) {
+            await createProfile({ name: agentName, hqName, avatar: 'sniff', pin });
+            await refreshSync();
+          }
+        }}
+      />
+    );
+  }
+
+  // A database exists but this device does not know who he is yet. Four taps.
+  if (sync.enabled && !sync.signedIn && (sync.profiles?.length ?? 0) > 0) {
+    return <SignIn profiles={sync.profiles ?? []} onSignedIn={refreshSync} />;
+  }
 
   const ids = ALL_LEVELS.map((l) => l.id);
   const rank = rankFor(state.xp);
@@ -199,6 +219,58 @@ export function HomeScreen() {
   );
 }
 
+/**
+ * Signing in on a second device.
+ *
+ * With one profile there is no picker: he goes straight to the four emoji,
+ * because a choice with one option is just a tap he did not need to make.
+ */
+function SignIn({
+  profiles,
+  onSignedIn,
+}: {
+  profiles: { id: string; name: string; avatar: string }[];
+  onSignedIn: () => Promise<void>;
+}) {
+  const [chosen, setChosen] = useState(profiles.length === 1 ? profiles[0] : null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <main className="dots flex min-h-[100dvh] items-center justify-center p-4">
+      {!chosen ? (
+        <div className="panel w-full max-w-sm p-5">
+          <h2 className="title mb-4 text-2xl">Who&apos;s playing?</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {profiles.map((p) => (
+              <button key={p.id} type="button" onClick={() => setChosen(p)} className="chunk bg-white px-3 py-3">
+                <span className="block text-3xl">🕶️</span>
+                <span className="block font-black">{p.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <EmojiPin
+          title={`Hello again, ${chosen.name}`}
+          subtitle="Tap your four pictures."
+          busy={busy}
+          error={error}
+          onCancel={profiles.length > 1 ? () => setChosen(null) : undefined}
+          onDone={async (pin) => {
+            setBusy(true);
+            setError(null);
+            const result = await signIn(chosen.id, pin);
+            setBusy(false);
+            if (result.ok) await onSignedIn();
+            else setError(result.reason === 'too-many' ? 'Too many tries. Have a break.' : 'Not those four. Try again.');
+          }}
+        />
+      )}
+    </main>
+  );
+}
+
 /** Names are not forever. He asked to be able to change his. */
 function Rename({
   agent,
@@ -258,9 +330,29 @@ function Rename({
  * First run. He names his own agent and his own HQ before he writes a line.
  * Costs almost nothing to build, and ownership matters more at 8 than polish.
  */
-function FirstRun({ onDone }: { onDone: (agent: string, hq: string) => void }) {
+function FirstRun({
+  needsCode,
+  onDone,
+}: {
+  needsCode: boolean;
+  onDone: (agent: string, hq: string, pin?: string[]) => void;
+}) {
   const [agent, setAgent] = useState('');
   const [hq, setHq] = useState('');
+  const [pickingCode, setPickingCode] = useState(false);
+
+  if (pickingCode) {
+    return (
+      <main className="dots flex min-h-[100dvh] items-center justify-center p-4">
+        <EmojiPin
+          title="Pick a secret"
+          subtitle="Four pictures, in an order you will remember. This is how you get back in on another device."
+          onCancel={() => setPickingCode(false)}
+          onDone={(pin) => onDone(agent.trim(), hq.trim(), pin)}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="dots flex min-h-[100dvh] items-center justify-center p-4">
@@ -307,11 +399,12 @@ function FirstRun({ onDone }: { onDone: (agent: string, hq: string) => void }) {
           disabled={!agent.trim() || !hq.trim()}
           onClick={() => {
             sfx.win();
-            onDone(agent.trim(), hq.trim());
+            if (needsCode) setPickingCode(true);
+            else onDone(agent.trim(), hq.trim());
           }}
           className="chunk w-full bg-emerald-400 py-3 text-lg"
         >
-          Let&apos;s go →
+          {needsCode ? 'Next →' : "Let's go →"}
         </button>
       </div>
     </main>

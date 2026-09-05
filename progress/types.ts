@@ -42,4 +42,12 @@ export interface ProgressState {
   sessions: Record<string, number>;
   typedLines: number;
   createdAt: string;
+  /**
+   * When this state was last written, anywhere.
+   *
+   * Almost everything merges by taking the better of two values, but a few
+   * fields have no "better" — his half-finished code on a level is just newer
+   * or older. This is the tie-break for those.
+   */
+  updatedAt?: string;
 }

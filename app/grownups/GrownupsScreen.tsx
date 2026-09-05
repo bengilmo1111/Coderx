@@ -8,6 +8,7 @@ import { levelProgress } from '@/progress/store';
 import { rankFor } from '@/progress/xp';
 import { nzDay } from '@/progress/streak';
 import { useProgress } from '@/lib/useProgress';
+import { signOut } from '@/lib/sync';
 
 /**
  * The parent view — the other half of the design.
@@ -33,7 +34,7 @@ interface TutorStatus {
 }
 
 export function GrownupsScreen() {
-  const { state, ready } = useProgress();
+  const { state, ready, sync } = useProgress();
   const [pin, setPin] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [error, setError] = useState(false);
@@ -184,6 +185,43 @@ export function GrownupsScreen() {
                   {!prog.completed && ' (not finished)'}
                 </li>
               ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="panel p-4">
+          <h2 className="title mb-2 text-lg">Sync</h2>
+          {!sync.enabled ? (
+            <p className="text-sm font-bold">
+              ⚠️ Not syncing. Progress lives only in this browser, so the computer and the phone are
+              separate games. Add the Supabase environment variables to switch it on.
+            </p>
+          ) : !sync.signedIn ? (
+            <p className="text-sm font-bold">⚠️ A database is configured, but nobody is signed in on this device.</p>
+          ) : (
+            <ul className="space-y-1 text-sm font-bold">
+              <li>✅ Signed in as {sync.profile?.name}</li>
+              <li className="opacity-60">
+                {sync.lastSyncedAt
+                  ? `Last synced ${new Date(sync.lastSyncedAt).toLocaleString('en-NZ')}`
+                  : 'Not synced yet this session.'}
+              </li>
+              <li className="text-xs font-bold opacity-55">
+                Free Supabase projects sleep after about a week idle. If this stops updating, the database has
+                paused — Henry will not notice, because the game runs entirely on his device either way.
+              </li>
+              <li className="pt-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut();
+                    window.location.href = '/';
+                  }}
+                  className="chunk bg-white px-3 text-sm"
+                >
+                  Sign out on this device
+                </button>
+              </li>
             </ul>
           )}
         </section>

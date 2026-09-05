@@ -12,7 +12,21 @@ import type { ProgressState } from '@/progress/types';
  * could happen.
  */
 
-const at = (state: ProgressState, iso: string): ProgressState => ({ ...state, updatedAt: iso });
+/**
+ * Pin both timestamps.
+ *
+ * `createdAt` is stamped from the wall clock by emptyProgress(), and these
+ * fixtures are rebuilt fresh on every call — so the commutativity check below,
+ * which builds four of them, would compare states that differ only by which
+ * millisecond they were constructed in. That failed roughly one run in twenty,
+ * and only ever on a loaded machine, which is the worst way for a test about
+ * not losing a child's stickers to behave.
+ */
+const at = (state: ProgressState, iso: string): ProgressState => ({
+  ...state,
+  updatedAt: iso,
+  createdAt: '2026-09-01T00:00:00.000Z',
+});
 
 /** A Friday night on the phone. */
 function phone(): ProgressState {
@@ -144,5 +158,20 @@ describe('the fiddly fields', () => {
     const a = { ...emptyProgress(), createdAt: '2026-09-01T00:00:00Z' };
     const b = { ...emptyProgress(), createdAt: '2026-08-01T00:00:00Z' };
     expect(mergeProgress(a, b).createdAt).toBe('2026-08-01T00:00:00Z');
+  });
+});
+
+describe('the character a child picked', () => {
+  it('follows the newer write, like his name does', () => {
+    const older = { ...emptyProgress(), avatar: 'sniff', updatedAt: '2026-09-01T00:00:00.000Z' };
+    const newer = { ...emptyProgress(), avatar: 'dragon', updatedAt: '2026-09-05T00:00:00.000Z' };
+    expect(mergeProgress(older, newer).avatar).toBe('dragon');
+    expect(mergeProgress(newer, older).avatar).toBe('dragon');
+  });
+
+  it('never merges to nothing when one side has not chosen', () => {
+    const chosen = { ...emptyProgress(), avatar: 'bolt', updatedAt: '2026-09-01T00:00:00.000Z' };
+    const blank = { ...emptyProgress(), avatar: '', updatedAt: '2026-09-05T00:00:00.000Z' };
+    expect(mergeProgress(chosen, blank).avatar).toBe('bolt');
   });
 });

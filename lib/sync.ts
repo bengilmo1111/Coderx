@@ -73,7 +73,7 @@ export async function createProfile(input: {
   hqName: string;
   avatar: string;
   pin: string[];
-}): Promise<{ ok: boolean; reason?: string }> {
+}): Promise<{ ok: boolean; reason?: string; profile?: { id: string; name: string; avatar: string } }> {
   return post({ action: 'create', ...input });
 }
 
@@ -85,7 +85,11 @@ export async function signOut(): Promise<void> {
   await post({ action: 'signout' });
 }
 
-async function post(body: unknown): Promise<{ ok: boolean; reason?: string }> {
+async function post(body: unknown): Promise<{
+  ok: boolean;
+  reason?: string;
+  profile?: { id: string; name: string; avatar: string };
+}> {
   try {
     const res = await fetch('/api/auth', {
       method: 'POST',

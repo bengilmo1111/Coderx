@@ -8,11 +8,29 @@ import { test, expect, type Page } from '@playwright/test';
  * has failed — so this test uses taps only. No typing anywhere.
  */
 
+/**
+ * Get to HQ, whether or not this deployment has a database behind it.
+ *
+ * With sync switched off the first run ends at "Let's go". With sync on it asks
+ * for a four-emoji secret first, twice. The game beyond that point is identical
+ * either way, so the tests below should not have to care — and until this
+ * handled both, none of them could run against the real deployment at all.
+ */
 async function enterHQ(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Turbo' }).click();
   await page.getByRole('button', { name: 'The Shed' }).click();
-  await page.getByRole('button', { name: /Let's go/ }).click();
+  await page.getByRole('button', { name: /Let's go|Next/ }).click();
+
+  const secret = page.getByText('Pick a secret');
+  if (await secret.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const pin = ['🍕', '🚀', '🐶', '🦜'];
+    for (const round of [0, 1]) {
+      void round;
+      for (const emoji of pin) await page.getByRole('button', { name: emoji, exact: true }).click();
+    }
+  }
+
   await expect(page.getByRole('heading', { name: 'The Shed' })).toBeVisible();
 }
 
@@ -28,6 +46,19 @@ async function tapBrick(page: Page, label: string, fill?: () => Promise<void>) {
 }
 
 const picker = (page: Page) => page.getByTestId('hole-picker');
+
+/**
+ * Start from an empty database when one is faked for us.
+ *
+ * Otherwise profiles pile up across tests and the second test onwards is met by
+ * "Who's playing?" instead of the first-run screen. Silently skipped when
+ * pointed at a real deployment, which has no such endpoint and should never
+ * have one.
+ */
+test.beforeEach(async ({ request }) => {
+  const fake = process.env.E2E_FAKE_DB;
+  if (fake) await request.post(`${fake}/__reset`).catch(() => undefined);
+});
 
 const goRight = (page: Page) => async () => {
   await expect(page.getByRole('heading', { name: 'Which way?' })).toBeVisible();

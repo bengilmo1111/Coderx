@@ -101,6 +101,7 @@ export function mergeProgress(a: ProgressState, b: ProgressState): ProgressState
     // knew about it.
     agentName: newer.agentName || a.agentName || b.agentName,
     hqName: newer.hqName || a.hqName || b.hqName,
+    avatar: newer.avatar || a.avatar || b.avatar,
     xp: Math.max(a.xp, b.xp),
     levels,
     stickers: union(older.stickers, newer.stickers),

@@ -7,7 +7,7 @@ import { CodeList } from '@/editor/CodeList';
 import { BrickBar } from '@/editor/BrickBar';
 import { HolePicker } from '@/editor/HolePicker';
 import { BRICKS, bricksFor, type Brick } from '@/editor/bricks';
-import { countStmts, findStmt, firstHole, getArg, insertStmt, moveStmt, removeStmt, setArg, wrapStmt, type ArgIndex, type Selection } from '@/editor/program';
+import { countStmts, findStmt, firstHole, getArg, insertStmt, missingRequirement, moveStmt, removeStmt, setArg, wrapStmt, type ArgIndex, type Selection } from '@/editor/program';
 
 import { parse } from '@/lang/parser';
 import { printSource } from '@/lang/printer';
@@ -24,7 +24,7 @@ import { usePlayback } from '@/lib/usePlayback';
 import { useProgress } from '@/lib/useProgress';
 import { sfx, loadMutePreference, setMuted } from '@/lib/sound';
 
-import { getLevel, nextLevelId } from '@/curriculum/chapter1/levels';
+import { getLevel, nextLevelId } from '@/curriculum/levels';
 import { awardsFor, rankFor, type Award } from '@/progress/xp';
 import { addMinutes, collect, collectCard, levelProgress, recordSkillAttempt, setLevelProgress } from '@/progress/store';
 
@@ -133,8 +133,17 @@ export function PlayScreen({ levelId }: { levelId: string }) {
 
   const fillHole = (value: Expr) => {
     if (!picker) return;
-    setProgram(setArg(program, picker.stmtId, picker.index, value));
-    setPicker(null);
+    const next = setArg(program, picker.stmtId, picker.index, value);
+    setProgram(next);
+
+    // Chain straight on to the next gap in the SAME line. "move far" has two —
+    // a direction and a number — and stopping after the first left the second
+    // sitting there for him to notice on his own.
+    const stmt = findStmt(next, picker.stmtId);
+    const hole = stmt ? firstHole([stmt]) : null;
+    setPicker(
+      hole ? { stmtId: hole.stmtId, index: hole.index, slot: slotFor(next, hole.stmtId, hole.index) } : null,
+    );
   };
 
   const addTypedLine = () => {
@@ -192,7 +201,17 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     settled.current = true;
 
     const size = countStmts(program);
-    const won = !runResult.error && level.goal({ world: runResult.finalWorld, saids: runResult.saids, size });
+    // A level can also insist on a construct, where a line budget cannot force
+    // one — `repeat 3` is shorter than naming a number and repeating that.
+    const missing = missingRequirement(program, level.requires);
+    const won =
+      !runResult.error &&
+      !missing &&
+      level.goal({ world: runResult.finalWorld, saids: runResult.saids, size });
+
+    if (!runResult.error && missing) {
+      setBanner(new CoderXError('That works! But this one is about a particular trick.', { tryThis: missing }));
+    }
     const before = levelProgress(state, level.id);
 
     if (runResult.error) {
@@ -417,7 +436,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
                   fair — nothing told him what a line is meant to look like.
                   Tapping one drops the real thing in the box to edit. */}
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {bricksFor(level.bricks, cast)
+                {bricksFor(level.bricks, cast, level.variable)
                   .filter((b) => b.example.toLowerCase().startsWith(typedDraft.trim().toLowerCase()))
                   .map((b) => (
                     <button
@@ -447,7 +466,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
             />
           </div>
 
-          <BrickBar brickIds={level.bricks} cast={cast} onTap={tapBrick} onShowHelp={(b) => setBanner(new CoderXError(BRICKS[b.id].help))} />
+          <BrickBar brickIds={level.bricks} cast={cast} variable={level.variable} onTap={tapBrick} onShowHelp={(b) => setBanner(new CoderXError(BRICKS[b.id].help))} />
         </section>
       </div>
 

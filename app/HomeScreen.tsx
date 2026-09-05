@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { ALL_LEVELS } from '@/curriculum/chapter1/levels';
+import { ALL_LEVELS, CHAPTERS } from '@/curriculum/levels';
 import { BRIDGE_CARDS } from '@/curriculum/bridgeCards';
 import { STICKERS } from '@/progress/stickers';
 import { isUnlocked, levelProgress } from '@/progress/store';
@@ -105,34 +105,40 @@ export function HomeScreen() {
           ))}
         </nav>
 
-        {tab === 'capers' && (
-          <ol className="space-y-3">
-            {ALL_LEVELS.map((level) => {
-              const prog = levelProgress(state, level.id);
-              const unlocked = isUnlocked(state, ids, level.id);
-              return (
-                <li key={level.id}>
-                  <Link
-                    href={unlocked ? `/play/${level.id}` : '#'}
-                    aria-disabled={!unlocked}
-                    className={`panel flex items-center gap-3 p-3 ${unlocked ? '' : 'pointer-events-none opacity-45'}`}
-                  >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-ink bg-pop text-lg font-black">
-                      {prog.completed ? '✓' : unlocked ? level.index : '🔒'}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-black">{level.title}</span>
-                      <span className="block truncate text-xs font-bold opacity-60">{level.goalText}</span>
-                    </span>
-                    {prog.completed && prog.bestSize !== null && (
-                      <span className="shrink-0 text-xs font-bold opacity-50">{prog.bestSize} lines</span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ol>
-        )}
+        {tab === 'capers' &&
+          CHAPTERS.map((chapter) => (
+            <section key={chapter.number} className="mb-6">
+              <h2 className="title mb-2 text-lg opacity-70">
+                Chapter {chapter.number} · {chapter.title}
+              </h2>
+              <ol className="space-y-3">
+                {chapter.levels.map((level) => {
+                  const prog = levelProgress(state, level.id);
+                  const unlocked = isUnlocked(state, ids, level.id);
+                  return (
+                    <li key={level.id}>
+                      <Link
+                        href={unlocked ? `/play/${level.id}` : '#'}
+                        aria-disabled={!unlocked}
+                        className={`panel flex items-center gap-3 p-3 ${unlocked ? '' : 'pointer-events-none opacity-45'}`}
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-ink bg-pop text-lg font-black">
+                          {prog.completed ? '✓' : unlocked ? level.index : '🔒'}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-black">{level.title}</span>
+                          <span className="block truncate text-xs font-bold opacity-60">{level.goalText}</span>
+                        </span>
+                        {prog.completed && prog.bestSize !== null && (
+                          <span className="shrink-0 text-xs font-bold opacity-50">{prog.bestSize} lines</span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ))}
 
         {tab === 'stickers' && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

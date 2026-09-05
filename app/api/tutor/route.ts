@@ -13,7 +13,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getLevel } from '@/curriculum/chapter1/levels';
+import { getLevel } from '@/curriculum/levels';
 import { nzDay } from '@/progress/streak';
 import { tutorConfig } from '@/lib/tutorConfig';
 import { tidyForAChild } from '@/lib/tutorText';

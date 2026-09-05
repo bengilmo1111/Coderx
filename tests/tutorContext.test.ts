@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describeWorld, describeOutcome, simulate } from '@/lib/tutorContext';
-import { getLevel } from '@/curriculum/chapter1/levels';
+import { getLevel } from '@/curriculum/levels';
 
 /**
  * Bolt told Henry that a correct solution had "only covered three squares" and

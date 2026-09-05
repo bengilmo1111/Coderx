@@ -161,11 +161,22 @@ function speechBubble(ctx: CanvasRenderingContext2D, text: string, cx: number, c
   ctx.restore();
 }
 
-function powBurst(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: number, cell: number, t: number) {
+function powBurst(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  cy: number,
+  cell: number,
+  t: number,
+  ceiling = 0,
+) {
   const scale = 0.6 + easeOut(Math.min(1, t * 2)) * 0.6;
   ctx.save();
   ctx.globalAlpha = 1 - Math.max(0, t - 0.6) / 0.4;
-  ctx.translate(cx, cy - cell * 0.7);
+  // The stage is one row tall now, so a burst hung high above the sprite runs
+  // off the top of the canvas.
+  const lift = cell * 0.5;
+  ctx.translate(cx, Math.max(ceiling + cell * 0.55, cy - lift));
   ctx.scale(scale, scale);
   ctx.rotate(-0.15);
 
@@ -231,9 +242,9 @@ export function drawScene(
     cy: L.oy + y * L.cell + L.cell / 2,
   });
 
-  // Rubbish that isn't being carried.
-  for (const r of world.rubbish) {
-    const before = prev?.world.rubbish.find((p) => p.id === r.id);
+  // Items on the ground, and the one being carried.
+  for (const r of world.items) {
+    const before = prev?.world.items.find((p) => p.id === r.id);
     const x = before ? lerp(before.x, r.x, ease) : r.x;
     const y = before ? lerp(before.y, r.y, ease) : r.y;
     const { cx, cy } = centre(x, y);
@@ -242,7 +253,8 @@ export function drawScene(
     // bin, and drawn centred it looked like it was already in the bin — which
     // is the opposite of the thing you are being asked to fix.
     const lift = carried ? -L.cell * 0.42 : -L.cell * 0.22;
-    glyph(ctx, litterGlyph(r.id), cx, cy + lift, L.cell * (carried ? 0.36 : 0.44));
+    const face = r.kind === 'sword' ? '🗡️' : litterGlyph(r.id);
+    glyph(ctx, face, cx, cy + lift, L.cell * (carried ? 0.36 : 0.44));
   }
 
   // Characters.
@@ -270,10 +282,76 @@ export function drawScene(
     } else {
       glyph(ctx, CHARACTERS[s.character].glyph, cx, cy - bob, size);
     }
+
+    if (s.maxHealth) healthBar(ctx, cx, cy - size * 0.72, L.cell, s.health ?? 0, s.maxHealth);
   }
 
   // Effects belong to the frame they were produced in.
   for (const e of next.effects) drawEffect(ctx, e, world, L, centre, ease);
+
+  drawVariables(ctx, next.vars);
+}
+
+/**
+ * Variables, on screen, changing as they change.
+ *
+ * A number that only exists inside the code is invisible. Watching `swords`
+ * tick up while the loop runs is the whole reason a variable makes sense.
+ */
+function drawVariables(ctx: CanvasRenderingContext2D, vars: Record<string, number> | undefined) {
+  const entries = Object.entries(vars ?? {});
+  if (entries.length === 0) return;
+
+  // Pinned to the canvas corner, not to the world. Positioned above the world
+  // strip it was clipped off the top of the picture, which rather defeated the
+  // point of putting the number where he can watch it change.
+  ctx.save();
+  ctx.font = '900 15px ui-rounded, "Trebuchet MS", system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+  let y = 8;
+  for (const [name, value] of entries) {
+    const text = `${name}: ${value}`;
+    const w = ctx.measureText(text).width + 18;
+    const h = 26;
+    ctx.fillStyle = '#fffdf5';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2.5;
+    roundRect(ctx, 8, y, w, h, 7);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.textAlign = 'left';
+    ctx.fillText(text, 17, y + h / 2);
+    y += h + 5;
+  }
+  ctx.restore();
+}
+
+/** How much fight the dragon has left, in hearts you can count. */
+function healthBar(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  cell: number,
+  health: number,
+  maxHealth: number,
+) {
+  const pip = cell * 0.13;
+  const gap = pip * 0.55;
+  const total = maxHealth * pip + (maxHealth - 1) * gap;
+  let x = cx - total / 2;
+  ctx.save();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < maxHealth; i += 1) {
+    ctx.beginPath();
+    ctx.arc(x + pip / 2, cy, pip / 2, 0, Math.PI * 2);
+    ctx.fillStyle = i < health ? '#e5484d' : 'rgba(255,255,255,0.75)';
+    ctx.fill();
+    ctx.stroke();
+    x += pip + gap;
+  }
+  ctx.restore();
 }
 
 function drawEffect(
@@ -288,6 +366,6 @@ function drawEffect(
   if (!s) return;
   const { cx, cy } = centre(s.x, s.y);
   if (e.kind === 'say' && e.text) speechBubble(ctx, e.text, cx, cy, L.cell, Math.min(1, t * 3));
-  if (e.kind === 'pow' && e.text) powBurst(ctx, e.text, cx, cy, L.cell, t);
+  if (e.kind === 'pow' && e.text) powBurst(ctx, e.text, cx, cy, L.cell, t, L.oy);
   if (e.kind === 'sparkle') sparkle(ctx, cx, cy, L.cell, t);
 }

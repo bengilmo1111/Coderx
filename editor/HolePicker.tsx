@@ -45,6 +45,7 @@ export function HolePicker({
       onClick={onClose}
     >
       <div
+        data-testid="hole-picker"
         className="panel pop-in max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-b-none p-4 sm:rounded-b-2xl"
         onClick={(e) => e.stopPropagation()}
       >

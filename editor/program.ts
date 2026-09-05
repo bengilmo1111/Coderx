@@ -20,7 +20,7 @@ export interface Selection {
 }
 
 const isBlock = (s: Stmt): s is Extract<Stmt, { body: Stmt[] }> =>
-  s.kind === 'repeat' || s.kind === 'if';
+  s.kind === 'repeat' || s.kind === 'if' || s.kind === 'until';
 
 const withBody = (s: Stmt, body: Stmt[]): Stmt => (isBlock(s) ? { ...s, body } : s);
 
@@ -188,7 +188,7 @@ export function wrapStmt(program: Program, stmtId: string, block: Stmt): Program
   });
 }
 
-export type ArgIndex = number | 'count' | 'cond';
+export type ArgIndex = number | 'count' | 'cond' | 'value';
 
 export function setArg(program: Program, stmtId: string, index: ArgIndex, value: Expr): Program {
   return program.map((s) => {
@@ -199,7 +199,8 @@ export function setArg(program: Program, stmtId: string, index: ArgIndex, value:
         return { ...s, args };
       }
       if (s.kind === 'repeat' && index === 'count') return { ...s, count: value };
-      if (s.kind === 'if' && index === 'cond') return { ...s, cond: value };
+      if ((s.kind === 'if' || s.kind === 'until') && index === 'cond') return { ...s, cond: value };
+      if (s.kind === 'set' && index === 'value') return { ...s, value };
       return s;
     }
     return isBlock(s) ? withBody(s, setArg(s.body, stmtId, index, value)) : s;
@@ -211,7 +212,8 @@ export function getArg(program: Program, stmtId: string, index: ArgIndex): Expr 
   if (!s) return null;
   if (s.kind === 'call' && typeof index === 'number') return s.args[index] ?? null;
   if (s.kind === 'repeat' && index === 'count') return s.count;
-  if (s.kind === 'if' && index === 'cond') return s.cond;
+  if ((s.kind === 'if' || s.kind === 'until') && index === 'cond') return s.cond;
+  if (s.kind === 'set' && index === 'value') return s.value;
   return null;
 }
 
@@ -221,12 +223,29 @@ export function firstHole(program: Program): { stmtId: string; index: ArgIndex }
     if (s.kind === 'call') {
       const i = s.args.findIndex((a) => a.kind === 'hole');
       if (i !== -1) return { stmtId: s.id, index: i };
-    } else {
-      const slot = s.kind === 'repeat' ? s.count : s.cond;
-      if (slot.kind === 'hole') return { stmtId: s.id, index: s.kind === 'repeat' ? 'count' : 'cond' };
-      const inner = firstHole(s.body);
-      if (inner) return inner;
+      continue;
     }
+    if (s.kind === 'set') {
+      if (s.value.kind === 'hole') return { stmtId: s.id, index: 'value' };
+      continue;
+    }
+    const slot = s.kind === 'repeat' ? s.count : s.cond;
+    if (slot.kind === 'hole') return { stmtId: s.id, index: s.kind === 'repeat' ? 'count' : 'cond' };
+    const inner = firstHole(s.body);
+    if (inner) return inner;
   }
   return null;
+}
+
+/** Does the program use this kind of statement anywhere, at any depth? */
+export function usesKind(program: Program, kind: Stmt['kind']): boolean {
+  return program.some((s) => s.kind === kind || (isBlock(s) && usesKind(s.body, kind)));
+}
+
+/** The first requirement this program fails, if any. */
+export function missingRequirement(
+  program: Program,
+  requires: { kind: Stmt['kind']; message: string }[] | undefined,
+): string | null {
+  return requires?.find((r) => !usesKind(program, r.kind))?.message ?? null;
 }

@@ -1,4 +1,4 @@
-import type { Program } from '@/lang/types';
+import type { Program, Stmt } from '@/lang/types';
 import type { WorldState } from '@/runtime/world';
 import type { SkillId } from './skills';
 
@@ -48,6 +48,17 @@ export interface Level {
    * between a constraint and being told your right answer is wrong.
    */
   maxLines?: number;
+  /**
+   * Constructs this level insists on.
+   *
+   * A line budget forces a loop when the loop-free version is longer. It cannot
+   * force a variable, because `repeat 3` is shorter than `set n = 3` plus
+   * `repeat n`. So where the construct IS the lesson, the level says so
+   * outright and the message explains why.
+   */
+  requires?: { kind: Stmt['kind']; message: string }[];
+  /** What the counting bricks call their variable on this level. */
+  variable?: string;
   skills: SkillId[];
   /** Bolt's handwritten ladder. Also the fallback when the AI is unavailable. */
   hints: string[];

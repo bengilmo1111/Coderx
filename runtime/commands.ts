@@ -12,7 +12,8 @@ import {
   DELTAS,
   cloneWorld,
   isDirection,
-  rubbishAt,
+  itemAt,
+  itemById,
   tileAt,
   type Effect,
   type Frame,
@@ -35,12 +36,16 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'say', minArgs: 2, maxArgs: 2, help: 'Give somebody a speech bubble.' },
   { name: 'bark', minArgs: 1, maxArgs: 1, help: 'BARK. Loudly. For no reason.' },
   { name: 'wait', minArgs: 1, maxArgs: 1, help: 'Do nothing. Dramatically.' },
+  { name: 'attack', minArgs: 1, maxArgs: 1, help: 'Swing whatever you are holding at the dragon.' },
 ];
 
 export const CONDITIONS: CommandSpec[] = [
   { name: 'rubbishHere', minArgs: 1, maxArgs: 1, help: 'Is there rubbish under their feet?' },
   { name: 'holding', minArgs: 1, maxArgs: 1, help: 'Are they carrying something?' },
   { name: 'atBin', minArgs: 1, maxArgs: 1, help: 'Are they standing on a bin?' },
+  { name: 'hasSword', minArgs: 1, maxArgs: 1, help: 'Are they holding a sword?' },
+  { name: 'swordHere', minArgs: 1, maxArgs: 1, help: 'Is there a sword under their feet?' },
+  { name: 'dragonBeaten', minArgs: 0, maxArgs: 0, help: 'Has the dragon had enough?' },
 ];
 
 /**
@@ -58,8 +63,13 @@ export class WorldHost implements Host {
   ) {}
 
   /** Called by the player after each yielded step. */
-  snapshot(stmtId: string): void {
-    this.frames.push({ stmtId, world: cloneWorld(this.world), effects: this.pending });
+  snapshot(stmtId: string, vars: ReadonlyMap<string, number> = new Map()): void {
+    this.frames.push({
+      stmtId,
+      world: cloneWorld(this.world),
+      effects: this.pending,
+      vars: Object.fromEntries(vars),
+    });
     this.pending = [];
   }
 
@@ -106,6 +116,8 @@ export class WorldHost implements Host {
       case 'wait':
         this.pending.push({ kind: 'wait' });
         return;
+      case 'attack':
+        return this.attack(args[0]);
     }
   }
 
@@ -140,12 +152,10 @@ export class WorldHost implements Host {
       s.x = nx;
       s.y = ny;
       // A carried item travels with its carrier.
-      if (s.carrying) {
-        const r = this.world.rubbish.find((x) => x.id === s.carrying);
-        if (r) {
-          r.x = nx;
-          r.y = ny;
-        }
+      const carried = itemById(this.world, s.carrying);
+      if (carried) {
+        carried.x = nx;
+        carried.y = ny;
       }
     }
   }
@@ -157,13 +167,13 @@ export class WorldHost implements Host {
         tryThis: 'Drop what they are carrying first, then grab.',
       });
     }
-    const r = rubbishAt(this.world, s.x, s.y);
-    if (!r) {
+    const item = itemAt(this.world, s.x, s.y);
+    if (!item) {
       throw new CoderXError(`There's nothing to grab here. ${this.label(who)} just grabbed some air.`, {
-        tryThis: 'Move onto a square that actually has rubbish on it.',
+        tryThis: 'Move onto a square that actually has something on it.',
       });
     }
-    s.carrying = r.id;
+    s.carrying = item.id;
     this.pending.push({ kind: 'sparkle', who: String(who) });
   }
 
@@ -175,9 +185,12 @@ export class WorldHost implements Host {
       });
     }
     const id = s.carrying;
+    const item = itemById(this.world, id);
     s.carrying = null;
-    if (tileAt(this.world, s.x, s.y) === 'bin') {
-      this.world.rubbish = this.world.rubbish.filter((r) => r.id !== id);
+    // Only rubbish counts as binned. Posting a sword into a wheelie bin is a
+    // waste of a sword.
+    if (item?.kind === 'rubbish' && tileAt(this.world, s.x, s.y) === 'bin') {
+      this.world.items = this.world.items.filter((i) => i.id !== id);
       this.world.binned += 1;
       this.pending.push({ kind: 'pow', who: String(who), text: 'SLAM DUNK!' });
     } else {
@@ -185,17 +198,67 @@ export class WorldHost implements Host {
     }
   }
 
+  /** Something of this kind on their square that they are not already holding. */
+  private loose(s: { x: number; y: number; carrying: string | null }, kind: 'rubbish' | 'sword') {
+    return this.world.items.some((i) => i.x === s.x && i.y === s.y && i.kind === kind && i.id !== s.carrying);
+  }
+
+  private dragon() {
+    const entry = Object.entries(this.world.sprites).find(([, s]) => s.character === 'dragon');
+    return entry?.[1];
+  }
+
+  private attack(who: Value): void {
+    const s = this.sprite(who);
+    const weapon = itemById(this.world, s.carrying);
+    if (weapon?.kind !== 'sword') {
+      throw new CoderXError(`${this.label(who)} has nothing to fight with, and dragons notice.`, {
+        tryThis: 'Grab a sword first, then attack.',
+      });
+    }
+    const dragon = this.dragon();
+    if (!dragon) {
+      throw new CoderXError('There is no dragon here to attack. Lucky, really.', {
+        tryThis: 'Save your swinging for a level with a dragon in it.',
+      });
+    }
+    if (Math.abs(dragon.x - s.x) > 1) {
+      throw new CoderXError(`The dragon is too far away. ${this.label(who)} just hit the air.`, {
+        tryThis: 'Move next to the dragon before you attack.',
+      });
+    }
+    if ((dragon.health ?? 0) <= 0) {
+      throw new CoderXError('The dragon has already given up. Leave it alone.', {
+        tryThis: 'Use repeatUntil dragonBeaten() so you stop at the right time.',
+      });
+    }
+    dragon.health = Math.max(0, (dragon.health ?? 0) - 1);
+    this.pending.push({
+      kind: 'pow',
+      who: String(who),
+      text: dragon.health === 0 ? 'ENOUGH!' : 'WHACK!',
+    });
+  }
+
   testCondition(name: string, args: Value[]): boolean {
     const spec = CONDITIONS.find((c) => c.name === name);
     if (!spec) throw errors.unknownCommand(name);
+
+    // The only condition about the world rather than a character.
+    if (name === 'dragonBeaten') return (this.dragon()?.health ?? 0) <= 0;
+
     const s = this.sprite(args[0]);
     switch (name) {
       case 'rubbishHere':
-        return Boolean(rubbishAt(this.world, s.x, s.y)) && s.carrying === null;
+        return this.loose(s, 'rubbish');
+      case 'swordHere':
+        return this.loose(s, 'sword');
       case 'holding':
         return s.carrying !== null;
       case 'atBin':
         return tileAt(this.world, s.x, s.y) === 'bin';
+      case 'hasSword':
+        return itemById(this.world, s.carrying)?.kind === 'sword';
       default:
         return false;
     }

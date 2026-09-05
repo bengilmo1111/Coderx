@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ALL_LEVELS } from '@/curriculum/chapter1/levels';
+import { ALL_LEVELS } from '@/curriculum/levels';
 import { SKILLS, type SkillArea, type SkillId } from '@/curriculum/skills';
 import { levelProgress } from '@/progress/store';
 import { rankFor } from '@/progress/xp';

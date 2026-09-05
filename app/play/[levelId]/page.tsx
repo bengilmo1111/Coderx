@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { ALL_LEVELS, getLevel } from '@/curriculum/chapter1/levels';
+import { ALL_LEVELS, getLevel } from '@/curriculum/levels';
 import { PlayScreen } from './PlayScreen';
 
 export function generateStaticParams() {

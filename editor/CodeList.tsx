@@ -2,7 +2,7 @@
 
 import { printProgram, type CodeLine } from '@/lang/printer';
 import type { Program } from '@/lang/types';
-import type { Selection } from './program';
+import type { ArgIndex, Selection } from './program';
 
 /**
  * The code, as real text he can tap.
@@ -22,7 +22,7 @@ export function CodeList({
   program: Program;
   selection: Selection | null;
   onSelect: (sel: Selection | null) => void;
-  onTapArg: (stmtId: string, index: number | 'count' | 'cond') => void;
+  onTapArg: (stmtId: string, index: ArgIndex) => void;
   runningStmtId?: string | null;
   errorStmtId?: string | null;
 }) {
@@ -68,7 +68,7 @@ function Line({
   running: boolean;
   errored: boolean;
   onSelect: (sel: Selection | null) => void;
-  onTapArg: (stmtId: string, index: number | 'count' | 'cond') => void;
+  onTapArg: (stmtId: string, index: ArgIndex) => void;
 }) {
   // An empty block's inside: a visible invitation rather than a blank gap.
   if (line.isSlot) {

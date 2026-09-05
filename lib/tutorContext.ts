@@ -12,7 +12,7 @@
  */
 
 import { parse } from '@/lang/parser';
-import { countStmts } from '@/editor/program';
+import { countStmts, missingRequirement } from '@/editor/program';
 import { CoderXError } from '@/lang/errors';
 import { runProgram } from '@/runtime/run';
 import { CHARACTERS, type WorldState } from '@/runtime/world';
@@ -28,7 +28,8 @@ export function describeWorld(world: WorldState, commandable: string[] = ['sniff
   };
 
   const bins = cols((x, y) => world.tiles[y][x] === 'bin');
-  const rubbish = world.rubbish.map((r) => String(r.x)).join(', ') || 'none';
+  const rubbish = world.items.filter((i) => i.kind === 'rubbish').map((i) => String(i.x)).join(', ') || 'none';
+  const swords = world.items.filter((i) => i.kind === 'sword').map((i) => String(i.x)).join(', ');
   const heroes = Object.entries(world.sprites).filter(([name]) => commandable.includes(name));
   const bystanders = Object.entries(world.sprites).filter(([name]) => !commandable.includes(name));
 
@@ -44,6 +45,7 @@ export function describeWorld(world: WorldState, commandable: string[] = ['sniff
     `The board is ${world.w} squares wide. Columns are numbered from 0 at the far left to ${world.w - 1} at the right.`,
     `${who} Everything happens along one row, so only left and right matter.`,
     `Bins are at column(s): ${bins}. Rubbish is at column(s): ${rubbish}.`,
+    ...(swords ? [`Swords are at column(s): ${swords}.`] : []),
     'Walking past column ' + (world.w - 1) + ' or before column 0 hits the fence.',
   ].join(' ');
 }
@@ -54,6 +56,8 @@ export interface Simulation {
   solved: boolean;
   /** Set when the level has a line budget he is over. */
   overBudget?: { used: number; allowed: number };
+  /** Set when it works but skips the construct the level is about. */
+  missingConstruct?: string;
   error?: string;
   binned: number;
   needed: number;
@@ -64,7 +68,7 @@ export interface Simulation {
 /** Runs his code against the real level, exactly as pressing Run would. */
 export function simulate(level: Level, code: string): Simulation {
   const world = level.makeWorld();
-  const needed = world.rubbish.length;
+  const needed = world.items.filter((i) => i.kind === 'rubbish').length;
   if (!code.trim()) return { ran: false, solved: false, binned: 0, needed, statements: 0 };
 
   try {
@@ -89,6 +93,7 @@ export function simulate(level: Level, code: string): Simulation {
         level.maxLines && goalMet && size > level.maxLines
           ? { used: size, allowed: level.maxLines }
           : undefined,
+      missingConstruct: goalMet ? (missingRequirement(program, level.requires) ?? undefined) : undefined,
     };
   } catch (e) {
     return {
@@ -114,7 +119,10 @@ export function describeOutcome(sim: Simulation): string {
       : sim.overBudget
         ? `IT WORKS, but this level allows ${sim.overBudget.allowed} lines and he used ${sim.overBudget.used}. ` +
           'Praise that it works, then nudge him toward a repeat to make it shorter. Never say it is wrong.'
-        : 'His code does not solve the level yet.',
+        : sim.missingConstruct
+          ? `IT WORKS, but this level is about a particular idea he has not used: "${sim.missingConstruct}" ` +
+            'Praise that it works first, then point him at that idea. Never say it is wrong.'
+          : 'His code does not solve the level yet.',
     `Rubbish binned: ${sim.binned} of ${sim.needed}.`,
   ];
   if (sim.endedAt !== undefined) parts.push(`Sniff finished at column ${sim.endedAt}.`);

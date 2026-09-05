@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_LEVELS, referenceProgram } from '@/curriculum/chapter1/levels';
+import { ALL_LEVELS, referenceProgram } from '@/curriculum/levels';
 import { runProgram } from '@/runtime/run';
 import { printSource } from '@/lang/printer';
 import { parse } from '@/lang/parser';
-import { countStmts } from '@/editor/program';
+
 import { SKILLS } from '@/curriculum/skills';
+import { BRICKS } from '@/editor/bricks';
+import { countStmts, missingRequirement } from '@/editor/program';
 import { BRIDGE_CARDS } from '@/curriculum/bridgeCards';
 
 /**
@@ -30,6 +32,9 @@ describe('level metadata is coherent', () => {
       for (const s of level.skills) expect(SKILLS[s]).toBeDefined();
       if (level.bridgeCard) expect(BRIDGE_CARDS[level.bridgeCard]).toBeDefined();
       expect(level.hints.length).toBeGreaterThanOrEqual(3);
+      for (const id of level.bricks) expect(BRICKS[id], `unknown brick "${id}"`).toBeDefined();
+      // A level that insists on a construct must be solvable using it.
+      expect(missingRequirement(referenceProgram(level), level.requires)).toBeNull();
 
       // par should equal the statement count of the reference solution.
       const count = (stmts: ReturnType<typeof referenceProgram>): number =>

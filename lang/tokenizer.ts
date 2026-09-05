@@ -14,7 +14,7 @@ export interface Token {
   col: number;
 }
 
-const PUNCT = new Set(['(', ')', '{', '}', ',']);
+const PUNCT = new Set(['(', ')', '{', '}', ',', '=', '+', '-', '>', '<']);
 
 export function tokenize(source: string): Token[] {
   const tokens: Token[] = [];
@@ -45,6 +45,14 @@ export function tokenize(source: string): Token[] {
       continue;
     }
     if (PUNCT.has(c)) {
+      // '==' is one token, so `swords == 3` reads as a comparison rather than
+      // two assignments.
+      if (c === '=' && source[i + 1] === '=') {
+        push('punct', '==', col);
+        i += 2;
+        col += 2;
+        continue;
+      }
       push('punct', c, col);
       i += 1;
       col += 1;

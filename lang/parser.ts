@@ -2,14 +2,18 @@
  * Parser. Text -> AST, for Type-It-Yourself and for tests that assert a level's
  * reference solution really does solve it.
  *
- * Grammar (v1 — Chapters 1-2):
+ * Grammar:
  *   program   := stmt*
- *   stmt      := repeat | if | call
+ *   stmt      := repeat | repeatUntil | if | set | call
  *   repeat    := 'repeat' expr '{' stmt* '}'
+ *   until     := 'repeatUntil' expr '{' stmt* '}'
  *   if        := 'if' expr '{' stmt* '}'
+ *   set       := 'set' name '=' expr
  *   call      := name '(' args? ')'
  *   args      := expr (',' expr)*
- *   expr      := number | string | call | name
+ *   expr      := math (('>' | '<' | '==') math)?
+ *   math      := primary (('+' | '-') primary)*
+ *   primary   := number | string | call | name
  */
 
 import { errors, CoderXError } from './errors';
@@ -64,10 +68,28 @@ class Parser {
       return { kind: 'repeat', id: newId('r'), count, body: this.parseBlock() };
     }
 
+    if (t.type === 'name' && t.value === 'repeatUntil') {
+      this.next();
+      const cond = this.parseExpr();
+      return { kind: 'until', id: newId('u'), cond, body: this.parseBlock() };
+    }
+
     if (t.type === 'name' && t.value === 'if') {
       this.next();
       const cond = this.parseExpr();
       return { kind: 'if', id: newId('i'), cond, body: this.parseBlock() };
+    }
+
+    if (t.type === 'name' && t.value === 'set') {
+      this.next();
+      const name = this.next();
+      if (name.type !== 'name') throw errors.cannotRead(name.value || 'nothing', name.line);
+      this.expect('=', (line) =>
+        new CoderXError(`Line ${line}: set needs an = after the name, like set swords = 0.`, {
+          tryThis: 'Put an = between the name and the number.',
+        }),
+      );
+      return { kind: 'set', id: newId('v'), name: name.value, value: this.parseExpr() };
     }
 
     if (t.type === 'name') {
@@ -93,7 +115,30 @@ class Parser {
     return args;
   }
 
+  /** expr := math (('>' | '<' | '==') math)? */
   private parseExpr(): Expr {
+    const left = this.parseMath();
+    for (const op of ['>', '<', '=='] as const) {
+      if (this.at(op)) {
+        this.next();
+        return { kind: 'compare', op, left, right: this.parseMath() };
+      }
+    }
+    return left;
+  }
+
+  /** math := primary (('+' | '-') primary)*, left-associative. */
+  private parseMath(): Expr {
+    let left = this.parsePrimary();
+    for (;;) {
+      const op = this.at('+') ? '+' : this.at('-') ? '-' : null;
+      if (!op) return left;
+      this.next();
+      left = { kind: 'math', op, left, right: this.parsePrimary() };
+    }
+  }
+
+  private parsePrimary(): Expr {
     const t = this.next();
     if (t.type === 'number') return { kind: 'num', value: Number(t.value) };
     if (t.type === 'string') return { kind: 'str', value: t.value };

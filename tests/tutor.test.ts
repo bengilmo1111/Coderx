@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { POST } from '@/app/api/tutor/route';
-import { getLevel } from '@/curriculum/chapter1/levels';
+import { getLevel } from '@/curriculum/levels';
 
 const post = (body: unknown) =>
   POST(new Request('http://localhost/api/tutor', { method: 'POST', body: JSON.stringify(body) }));

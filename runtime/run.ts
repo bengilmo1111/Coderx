@@ -40,7 +40,7 @@ export function runProgram(
         break;
       }
       steps = r.value.count;
-      host.snapshot(r.value.stmtId);
+      host.snapshot(r.value.stmtId, r.value.vars);
     }
   } catch (e) {
     if (e instanceof CoderXError) {

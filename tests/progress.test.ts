@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { nzDay, touchStreak, emptyStreak } from '@/progress/streak';
 import { rankFor, nextRank, awardsFor } from '@/progress/xp';
 import { emptyProgress, recordSkillAttempt, isUnlocked, collect } from '@/progress/store';
-import { ALL_LEVELS } from '@/curriculum/chapter1/levels';
+import { ALL_LEVELS } from '@/curriculum/levels';
 
 describe('NZ day boundaries', () => {
   it('rolls over at Auckland midnight, not UTC midnight', () => {

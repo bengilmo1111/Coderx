@@ -36,8 +36,8 @@ export type Segment =
 /** Where a value lives, so tapping it can open the right picker. */
 export interface ArgPath {
   stmtId: string;
-  /** 'count' and 'cond' address the repeat/if slot; numbers address call args. */
-  index: number | 'count' | 'cond';
+  /** 'count', 'cond' and 'value' address block and set slots; numbers address call args. */
+  index: number | 'count' | 'cond' | 'value';
 }
 
 export function printExpr(e: Expr): string {
@@ -50,6 +50,10 @@ export function printExpr(e: Expr): string {
       return e.name;
     case 'call':
       return `${e.name}(${e.args.map(printExpr).join(', ')})`;
+    case 'math':
+      return `${printExpr(e.left)} ${e.op} ${printExpr(e.right)}`;
+    case 'compare':
+      return `${printExpr(e.left)} ${e.op} ${printExpr(e.right)}`;
     case 'hole':
       return '▢';
   }
@@ -79,7 +83,25 @@ export function printProgram(program: Program): CodeLine[] {
         continue;
       }
 
-      const keyword = s.kind === 'repeat' ? 'repeat' : 'if';
+      if (s.kind === 'set') {
+        lines.push({
+          stmtId: s.id,
+          indent,
+          line: n,
+          isCloser: false,
+          isSlot: false,
+          segments: [
+            { kind: 'keyword', text: 'set' },
+            { kind: 'punct', text: ' ' },
+            { kind: 'command', text: s.name },
+            { kind: 'punct', text: ' = ' },
+            exprSegment(s.value, { stmtId: s.id, index: 'value' }),
+          ],
+        });
+        continue;
+      }
+
+      const keyword = s.kind === 'repeat' ? 'repeat' : s.kind === 'until' ? 'repeatUntil' : 'if';
       const slot = s.kind === 'repeat' ? s.count : s.cond;
       const path: ArgPath = { stmtId: s.id, index: s.kind === 'repeat' ? 'count' : 'cond' };
       lines.push({

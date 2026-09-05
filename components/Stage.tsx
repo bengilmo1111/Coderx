@@ -46,7 +46,7 @@ export function Stage({
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const current: Frame = frames[index] ?? { stmtId: '', world, effects: [] };
+      const current: Frame = frames[index] ?? { stmtId: '', world, effects: [], vars: {} };
       const prev: Frame | null = index > 0 ? (frames[index - 1] ?? null) : null;
       drawScene(ctx, w, h, prev, current, t);
     };

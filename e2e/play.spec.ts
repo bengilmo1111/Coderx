@@ -27,10 +27,19 @@ async function tapBrick(page: Page, label: string, fill?: () => Promise<void>) {
   if (fill) await fill();
 }
 
+const picker = (page: Page) => page.getByTestId('hole-picker');
+
 const goRight = (page: Page) => async () => {
   await expect(page.getByRole('heading', { name: 'Which way?' })).toBeVisible();
-  await page.getByRole('button', { name: '➡︎' }).click();
+  await picker(page).getByRole('button', { name: '➡︎' }).click();
 };
+
+/** Pick a number in the dialog. The same digits exist in his code, so scope it. */
+async function pickNumber(page: Page, n: number) {
+  await expect(page.getByRole('heading', { name: 'How many?' })).toBeVisible();
+  await picker(page).getByRole('button', { name: String(n), exact: true }).click();
+  await picker(page).getByRole('button', { name: new RegExp(`Use ${n}`) }).click();
+}
 
 test('a level can be finished by tapping alone', async ({ page }) => {
   await enterHQ(page);
@@ -78,7 +87,7 @@ test('an impossible move is a joke, not a crash', async ({ page }) => {
 
   // Walk Sniff straight into the fence on purpose.
   await page.getByRole('button', { name: 'move', exact: true }).click();
-  await page.getByRole('button', { name: '⬅︎' }).click();
+  await picker(page).getByRole('button', { name: '⬅︎' }).click();
   await page.getByRole('button', { name: /Run it/ }).click();
 
   await expect(page.getByText(/bonked straight into the fence/)).toBeVisible({ timeout: 20_000 });
@@ -129,8 +138,7 @@ test('a nested if inside a repeat can be built by tapping', async ({ page }) => 
 
   // repeat 5 { ... }
   await page.getByRole('button', { name: 'repeat', exact: true }).click();
-  await page.getByRole('button', { name: '5', exact: true }).click();
-  await page.getByRole('button', { name: /Use 5/ }).click();
+  await pickNumber(page, 5);
 
   // The if lands inside the repeat, because the repeat header is selected.
   await page.getByRole('button', { name: 'if rubbish here', exact: true }).click();
@@ -259,8 +267,7 @@ test('tapping repeat with a line selected wraps that line', async ({ page }) => 
   // thing, then tap repeat around it.
   await page.getByRole('button', { name: 'grab', exact: true }).click();
   await page.getByRole('button', { name: 'repeat', exact: true }).click();
-  await page.getByRole('button', { name: '3', exact: true }).click();
-  await page.getByRole('button', { name: /Use 3/ }).click();
+  await pickNumber(page, 3);
 
   const code = page.getByRole('list').first();
   await expect(code).toContainText('repeat 3 {');
@@ -279,8 +286,7 @@ test('a brick can be walked into a block and back out with the arrows', async ({
 
   // An empty repeat, then a grab after it.
   await page.getByRole('button', { name: 'repeat', exact: true }).click();
-  await page.getByRole('button', { name: '2', exact: true }).click();
-  await page.getByRole('button', { name: /Use 2/ }).click();
+  await pickNumber(page, 2);
   await expect(page.getByText('tap a brick to put it in here')).toBeVisible();
 
   await page.getByRole('listitem').filter({ hasText: /^\d+\}$/ }).first().click();
@@ -297,4 +303,78 @@ test('a brick can be walked into a block and back out with the arrows', async ({
   // And back out again.
   await page.getByRole('button', { name: '↓' }).click();
   expect((await grabLine().boundingBox())!.x).toBe(outdented);
+});
+
+/**
+ * Chapter 2, which Henry designed: "fighting a dragon by collecting weapons."
+ * It is also where a second character starts taking orders, and where variables
+ * and repeatUntil arrive.
+ */
+test('the dragon can be fought by tapping alone', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'coderx.progress.v1',
+      JSON.stringify({
+        version: 1, agentName: 'Turbo', hqName: 'The Shed', xp: 400,
+        levels: Object.fromEntries(
+          ['c1l1','c1l2','c1l3','c1l4','c1l5','c1l6'].map((id) => [id, { completed: true }]),
+        ),
+        stickers: [], clubCards: [],
+        streak: { lastDay: null, count: 0, best: 0, freezes: 2 },
+        mastery: {}, sessions: {}, typedLines: 0, createdAt: new Date().toISOString(),
+      }),
+    );
+  });
+
+  await page.goto('/play/c2l1');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  const moveTwo = async () => {
+    await page.getByRole('button', { name: 'move far', exact: true }).click();
+    await picker(page).getByRole('button', { name: '➡︎' }).click();
+    await pickNumber(page, 2);
+  };
+
+  await moveTwo();
+  await page.getByRole('button', { name: 'grab', exact: true }).click();
+  await moveTwo();
+  await page.getByRole('button', { name: 'attack', exact: true }).click();
+
+  await expect(page.getByRole('list').first()).toContainText('attack(sniff)');
+  await page.getByRole('button', { name: /Run it/ }).click();
+  await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
+});
+
+test('a level that is about a variable says so when you skip it', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'coderx.progress.v1',
+      JSON.stringify({
+        version: 1, agentName: 'Turbo', hqName: 'The Shed', xp: 500,
+        levels: Object.fromEntries(
+          ['c1l1','c1l2','c1l3','c1l4','c1l5','c1l6','c2l1','c2l2'].map((id) => [id, { completed: true }]),
+        ),
+        stickers: [], clubCards: [],
+        streak: { lastDay: null, count: 0, best: 0, freezes: 2 },
+        mastery: {}, sessions: {}, typedLines: 0, createdAt: new Date().toISOString(),
+      }),
+    );
+  });
+
+  await page.goto('/play/c2l3');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  // Solve it the blunt way: grab, walk up, swing three times. It works...
+  await page.getByRole('button', { name: 'grab', exact: true }).click();
+  await page.getByRole('button', { name: 'move far', exact: true }).click();
+  await picker(page).getByRole('button', { name: '➡︎' }).click();
+  await pickNumber(page, 2);
+  for (let i = 0; i < 3; i += 1) {
+    await page.getByRole('button', { name: 'attack', exact: true }).click();
+  }
+
+  await page.getByRole('button', { name: /Run it/ }).click();
+  // ...but the level is about naming a number, so it says so and stays open.
+  await expect(page.getByText(/about a particular trick/)).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByRole('heading', { name: 'Nailed it!' })).toHaveCount(0);
 });

@@ -48,6 +48,26 @@ export const BRIDGE_CARDS: Record<string, BridgeCard> = {
       'The orange repeat block wraps around other blocks. Your { squiggly gates } do the same job. ' +
       'And here is the sneaky bit: repeat 3 with 2 steps each time is 3 lots of 2. Six steps.',
   },
+  variables: {
+    id: 'variables',
+    title: 'CLUB CARD: Make a Variable',
+    youWrote: 'set swings = 3\nrepeat swings {\n  attack(sniff)\n}',
+    scratchBlock: 'set [my variable] to (3)',
+    body:
+      'In Scratch there is an orange button that says "Make a Variable", and it gives you a little ' +
+      'name you can put a number in. That is exactly what set does. Once it has a name, you can use ' +
+      'it anywhere a number goes.',
+  },
+  until: {
+    id: 'until',
+    title: 'CLUB CARD: repeat until',
+    youWrote: 'repeatUntil dragonBeaten() {\n  attack(sniff)\n}',
+    scratchBlock: 'repeat until <>',
+    body:
+      'The other orange loop. A normal repeat needs you to know the number first. This one does not — ' +
+      'it just keeps going until the answer to the question is yes. You used it when nobody knew how ' +
+      'many swings it would take, which is the whole point of it.',
+  },
   conditionals: {
     id: 'conditionals',
     title: 'CLUB CARD: The gold if-then',

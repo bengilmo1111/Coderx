@@ -9,7 +9,6 @@
  * satisfy its own `goal` — that is what stops an unsolvable level shipping.
  */
 
-import { parse } from '@/lang/parser';
 import { buildWorld } from '@/runtime/world';
 import type { Level } from '../types';
 
@@ -272,19 +271,3 @@ say(sniff, "case closed")`,
     reward: { xp: 100, sticker: 'bin-day-medal' },
   },
 ];
-
-export const ALL_LEVELS: Level[] = [...CHAPTER1];
-
-export function getLevel(id: string): Level | undefined {
-  return ALL_LEVELS.find((l) => l.id === id);
-}
-
-export function nextLevelId(id: string): string | undefined {
-  const i = ALL_LEVELS.findIndex((l) => l.id === id);
-  return i >= 0 ? ALL_LEVELS[i + 1]?.id : undefined;
-}
-
-/** Parse a level's reference solution. Used by tests and by "show me" hints. */
-export function referenceProgram(level: Level) {
-  return parse(level.reference);
-}

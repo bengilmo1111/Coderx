@@ -119,3 +119,71 @@ describe('characters who take no orders', () => {
     expect(r.error).toBeUndefined();
   });
 });
+
+/**
+ * Chapter 2 language: variables and a real while loop. Both come straight out
+ * of Henry's own story idea — counting the weapons you have collected, and
+ * keeping at the dragon until it gives up.
+ */
+describe('variables and repeatUntil', () => {
+  const street = () =>
+    buildWorld({
+      grid: ['-----'],
+      sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+    });
+
+  it('sets a variable and counts up with it', () => {
+    const p = parse('set swords = 0\nset swords = swords + 1\nset swords = swords + 1');
+    expect(printSource(p)).toBe('set swords = 0\nset swords = swords + 1\nset swords = swords + 1');
+    const r = runProgram(p, street());
+    expect(r.error).toBeUndefined();
+    expect(r.frames.at(-1)!.vars.swords).toBe(2);
+  });
+
+  it('repeats a variable number of times', () => {
+    const r = runProgram(parse('set n = 3\nrepeat n {\n  bark(sniff)\n}'), street());
+    expect(r.error).toBeUndefined();
+    // one set, one repeat header, three barks
+    expect(r.frames.filter((f) => f.effects.some((e) => e.kind === 'pow'))).toHaveLength(3);
+  });
+
+  it('keeps a name that is not a variable working as itself', () => {
+    // `sniff` and `right` must still mean sniff and right, not undefined.
+    const r = runProgram(parse('set n = 1\nmove(sniff, right, n)'), street());
+    expect(r.error).toBeUndefined();
+    expect(r.finalWorld.sprites.sniff.x).toBe(1);
+  });
+
+  it('compares numbers', () => {
+    const r = runProgram(parse('set n = 3\nif n > 2 {\n  bark(sniff)\n}'), street());
+    expect(r.frames.some((f) => f.effects.some((e) => e.kind === 'pow'))).toBe(true);
+    const quiet = runProgram(parse('set n = 1\nif n > 2 {\n  bark(sniff)\n}'), street());
+    expect(quiet.frames.some((f) => f.effects.some((e) => e.kind === 'pow'))).toBe(false);
+  });
+
+  it('runs repeatUntil until the condition comes true', () => {
+    const r = runProgram(
+      parse('set n = 0\nrepeatUntil n == 3 {\n  set n = n + 1\n  bark(sniff)\n}'),
+      street(),
+    );
+    expect(r.error).toBeUndefined();
+    expect(r.frames.at(-1)!.vars.n).toBe(3);
+    expect(r.frames.filter((f) => f.effects.some((e) => e.kind === 'pow'))).toHaveLength(3);
+  });
+
+  it('does not run the body at all when the condition is already true', () => {
+    const r = runProgram(parse('set n = 5\nrepeatUntil n > 2 {\n  bark(sniff)\n}'), street());
+    expect(r.frames.some((f) => f.effects.some((e) => e.kind === 'pow'))).toBe(false);
+  });
+
+  it('stops a repeatUntil that never comes true, instead of hanging', () => {
+    const r = runProgram(parse('set n = 0\nrepeatUntil n == 3 {\n  bark(sniff)\n}'), street(), {
+      maxSteps: 200,
+    });
+    expect(r.error?.boltSays).toMatch(/stuck in a loop forever/);
+  });
+
+  it('complains about a missing = in words he can act on', () => {
+    expect(() => parse('set swords 0')).toThrow(/needs an = after the name/);
+  });
+});

@@ -12,7 +12,7 @@
 
 import { hole, newId, type Expr, type Stmt } from '@/lang/types';
 
-export type BrickCategory = 'go' | 'do' | 'control' | 'talk';
+export type BrickCategory = 'go' | 'do' | 'control' | 'talk' | 'count';
 
 export interface Brick {
   id: string;
@@ -42,8 +42,9 @@ function who(cast: string[]): Expr {
   return cast.length === 1 ? { kind: 'ident', name: cast[0] } : hole('character', 'who?');
 }
 
-function buildBricks(cast: string[]): Record<string, Brick> {
+function buildBricks(cast: string[], variable = 'count'): Record<string, Brick> {
   const hero = cast[0];
+  const v = variable;
   const sniff = () => who(cast);
   return {
     move: {
@@ -120,6 +121,77 @@ function buildBricks(cast: string[]): Record<string, Brick> {
       }),
       example: `if rubbishHere(${hero}) { grab(${hero}) }`,
     },
+    attack: {
+      id: 'attack',
+      label: 'attack',
+      category: 'do',
+      help: 'Swing your sword at the dragon. You have to be next to it.',
+      make: () => ({ kind: 'call', id: newId('c'), name: 'attack', args: [sniff()] }),
+      example: `attack(${hero})`,
+    },
+    'count-start': {
+      id: 'count-start',
+      label: `start ${v}`,
+      category: 'count',
+      help: 'Begin counting from nothing.',
+      make: () => ({ kind: 'set', id: newId('v'), name: v, value: { kind: 'num', value: 0 } }),
+      example: `set ${v} = 0`,
+    },
+    'count-add': {
+      id: 'count-add',
+      label: 'add one',
+      category: 'count',
+      help: 'Add one to the count.',
+      make: () => ({
+        kind: 'set',
+        id: newId('v'),
+        name: v,
+        value: { kind: 'math', op: '+', left: { kind: 'ident', name: v }, right: { kind: 'num', value: 1 } },
+      }),
+      example: `set ${v} = ${v} + 1`,
+    },
+    'count-set': {
+      id: 'count-set',
+      label: `set ${v}`,
+      category: 'count',
+      help: 'Give the count a number of your choosing.',
+      make: () => ({ kind: 'set', id: newId('v'), name: v, value: hole('number', 'how many?') }),
+      example: `set ${v} = 3`,
+    },
+    'repeat-count': {
+      id: 'repeat-count',
+      label: `repeat ${v} times`,
+      category: 'control',
+      help: 'Do the inside once for each one you counted.',
+      make: () => ({ kind: 'repeat', id: newId('r'), count: { kind: 'ident', name: v }, body: [] }),
+      example: `repeat ${v} { attack(${hero}) }`,
+    },
+    'until-dragon': {
+      id: 'until-dragon',
+      label: 'until dragon gives up',
+      category: 'control',
+      help: 'Keep doing the inside over and over, until the dragon has had enough.',
+      make: () => ({
+        kind: 'until',
+        id: newId('u'),
+        cond: { kind: 'call', name: 'dragonBeaten', args: [] },
+        body: [],
+      }),
+      example: `repeatUntil dragonBeaten() { attack(${hero}) }`,
+    },
+    'if-sword': {
+      id: 'if-sword',
+      label: 'if sword here',
+      category: 'control',
+      help: 'Only do the inside bit when there is a sword under their feet.',
+      make: () => ({
+        kind: 'if',
+        id: newId('i'),
+        cond: { kind: 'call', name: 'swordHere', args: [sniff()] },
+        body: [],
+      }),
+      example: `if swordHere(${hero}) { grab(${hero}) }`,
+    },
     'if-holding': {
       id: 'if-holding',
       label: 'if holding',
@@ -144,9 +216,11 @@ export const CATEGORY_STYLE: Record<BrickCategory, { name: string; className: st
   do: { name: 'Do', className: 'bg-emerald-500 border-emerald-800' },
   control: { name: 'Control', className: 'bg-amber-500 border-amber-800' },
   talk: { name: 'Talk', className: 'bg-fuchsia-500 border-fuchsia-800' },
+  count: { name: 'Count', className: 'bg-violet-500 border-violet-800' },
 };
 
-export function bricksFor(ids: string[], cast: string[] = ['sniff']): Brick[] {
-  const set = cast.length === 1 && cast[0] === 'sniff' ? BRICKS : buildBricks(cast);
+export function bricksFor(ids: string[], cast: string[] = ['sniff'], variable = 'count'): Brick[] {
+  const set =
+    cast.length === 1 && cast[0] === 'sniff' && variable === 'count' ? BRICKS : buildBricks(cast, variable);
   return ids.map((id) => set[id]).filter(Boolean);
 }

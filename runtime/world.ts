@@ -9,7 +9,7 @@
 export type Direction = 'up' | 'down' | 'left' | 'right';
 export type TileKind = 'grass' | 'path' | 'bin' | 'fence';
 
-export type CharacterKey = 'sniff' | 'kea' | 'weka' | 'bolt' | 'nan' | 'meatball';
+export type CharacterKey = 'sniff' | 'kea' | 'weka' | 'bolt' | 'nan' | 'meatball' | 'dragon';
 
 /** Cast is half endemic NZ on purpose — this should feel like Henry's country. */
 export const CHARACTERS: Record<CharacterKey, { label: string; glyph: string; blurb: string }> = {
@@ -19,6 +19,7 @@ export const CHARACTERS: Record<CharacterKey, { label: string; glyph: string; bl
   bolt: { label: 'Bolt', glyph: '🤖', blurb: 'Robot. Mostly a toaster. Your mate.' },
   nan: { label: 'Nan McSnap', glyph: '👵', blurb: 'Tiny master criminal. Age unknown.' },
   meatball: { label: 'The Meatball', glyph: '🍝', blurb: 'Sentient. Allegiance unclear.' },
+  dragon: { label: 'The Dragon', glyph: '🐉', blurb: 'Enormous. Grumpy. Reportedly ticklish.' },
 };
 
 export interface SpriteState {
@@ -26,14 +27,21 @@ export interface SpriteState {
   x: number;
   y: number;
   facing: Direction;
-  /** Id of the rubbish being carried, or null. One item at a time. */
+  /** Id of the item being carried, or null. One at a time. */
   carrying: string | null;
+  /** Only things that can be fought have this. Zero means beaten. */
+  health?: number;
+  maxHealth?: number;
 }
 
-export interface RubbishState {
+/** Rubbish to bin, swords to fight with — same mechanics, different meaning. */
+export type ItemKind = 'rubbish' | 'sword';
+
+export interface ItemState {
   id: string;
   x: number;
   y: number;
+  kind: ItemKind;
 }
 
 export interface WorldState {
@@ -41,8 +49,8 @@ export interface WorldState {
   h: number;
   tiles: TileKind[][];
   sprites: Record<string, SpriteState>;
-  rubbish: RubbishState[];
-  /** How many pieces have made it into a bin. Most goals check this. */
+  items: ItemState[];
+  /** How many pieces of rubbish have made it into a bin. Most goals check this. */
   binned: number;
 }
 
@@ -58,6 +66,8 @@ export interface Frame {
   stmtId: string;
   world: WorldState;
   effects: Effect[];
+  /** Variables as they stood at this step, for the on-stage display. */
+  vars: Record<string, number>;
 }
 
 export const DELTAS: Record<Direction, { dx: number; dy: number }> = {
@@ -80,16 +90,25 @@ export function tileAt(w: WorldState, x: number, y: number): TileKind | null {
   return w.tiles[y][x];
 }
 
-export function rubbishAt(w: WorldState, x: number, y: number): RubbishState | undefined {
-  return w.rubbish.find((r) => r.x === x && r.y === y);
+export function itemAt(w: WorldState, x: number, y: number, kind?: ItemKind): ItemState | undefined {
+  return w.items.find((i) => i.x === x && i.y === y && (!kind || i.kind === kind));
+}
+
+export function itemById(w: WorldState, id: string | null): ItemState | undefined {
+  return id ? w.items.find((i) => i.id === id) : undefined;
 }
 
 /** Compact grid builder so levels stay readable as data. */
 export function buildWorld(spec: {
   /** One string per row. '.' grass, '-' path, 'B' bin, '#' fence. */
   grid: string[];
-  sprites: Record<string, { character: CharacterKey; x: number; y: number; facing?: Direction }>;
+  sprites: Record<
+    string,
+    { character: CharacterKey; x: number; y: number; facing?: Direction; health?: number }
+  >;
+  /** Shorthand for the common case; the same thing as items of kind 'rubbish'. */
   rubbish?: { x: number; y: number }[];
+  items?: { x: number; y: number; kind: ItemKind }[];
 }): WorldState {
   const legend: Record<string, TileKind> = { '.': 'grass', '-': 'path', B: 'bin', '#': 'fence' };
   const tiles = spec.grid.map((row) =>
@@ -105,15 +124,20 @@ export function buildWorld(spec: {
 
   const sprites: Record<string, SpriteState> = {};
   for (const [name, s] of Object.entries(spec.sprites)) {
-    sprites[name] = { character: s.character, x: s.x, y: s.y, facing: s.facing ?? 'right', carrying: null };
+    sprites[name] = {
+      character: s.character,
+      x: s.x,
+      y: s.y,
+      facing: s.facing ?? 'right',
+      carrying: null,
+      ...(s.health !== undefined ? { health: s.health, maxHealth: s.health } : {}),
+    };
   }
 
-  return {
-    w,
-    h,
-    tiles,
-    sprites,
-    rubbish: (spec.rubbish ?? []).map((r, i) => ({ id: `r${i}`, x: r.x, y: r.y })),
-    binned: 0,
-  };
+  const items: ItemState[] = [
+    ...(spec.rubbish ?? []).map((r, i) => ({ id: `r${i}`, x: r.x, y: r.y, kind: 'rubbish' as const })),
+    ...(spec.items ?? []).map((it, i) => ({ id: `i${i}`, x: it.x, y: it.y, kind: it.kind })),
+  ];
+
+  return { w, h, tiles, sprites, items, binned: 0 };
 }

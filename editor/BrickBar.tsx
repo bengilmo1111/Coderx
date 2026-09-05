@@ -17,15 +17,17 @@ import { sfx } from '@/lib/sound';
 export function BrickBar({
   brickIds,
   cast,
+  variable,
   onTap,
   onShowHelp,
 }: {
   brickIds: string[];
   cast: string[];
+  variable?: string;
   onTap: (brick: Brick) => void;
   onShowHelp: (brick: Brick) => void;
 }) {
-  const bricks = bricksFor(brickIds, cast);
+  const bricks = bricksFor(brickIds, cast, variable);
   const scroller = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);

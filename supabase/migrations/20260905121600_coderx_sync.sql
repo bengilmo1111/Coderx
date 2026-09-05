@@ -4,8 +4,13 @@
 -- those are two separate games: different XP, different stickers, a different
 -- streak.
 --
--- Run this once in the Supabase SQL Editor. See the README for the four
--- environment variables that go with it.
+-- The Supabase GitHub integration applies this on push to main, so the
+-- filename must carry the <timestamp>_name.sql prefix the CLI expects — a
+-- plain 0001_ prefix is not picked up.
+--
+-- Every statement is idempotent. This schema was first applied by hand while
+-- the project was being set up, so the integration will run it again against a
+-- database that already has it, and must find nothing to do.
 
 create table if not exists profiles (
   id         uuid primary key default gen_random_uuid(),

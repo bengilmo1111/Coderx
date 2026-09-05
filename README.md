@@ -168,6 +168,55 @@ immediately: blank values for `TUTOR_MODEL` and `TUTOR_DAILY_CALL_CAP` in the
 dashboard had disabled the AI tutor entirely while it reported itself
 configured (`??` doesn't fall back on `""`, and `Number('')` is `0`).
 
+## Sync
+
+Henry uses a shared family computer and his dad's phone. Without sync those are
+two separate games — different XP, different stickers, a different streak — and
+the collection he came back for splits in two.
+
+**Local-first, permanently.** `localStorage` is the source of truth while he is
+playing; the server is a place the truth also ends up. He plays on a phone in
+bed on bad wifi, so nothing ever waits on the network and every failure is
+silent and retried on the next load. With no database configured at all, the
+whole app runs exactly as before and `/grownups` says sync is off.
+
+**Merge, never last-write-wins.** Progress is monotonic — XP only goes up,
+stickers are only collected, a finished level never un-finishes — so when two
+devices disagree the answer is "take the best of both". Last-write-wins would
+mean a Saturday on the computer erasing Friday night's stickers from the phone.
+`progress/merge.ts` is pure, commutative and idempotent, and the push merges
+**server-side** too, so a device offline all week cannot roll back the other one.
+
+**Four taps to sign in.** No email, no password, no keyboard: four emoji from a
+set of twelve, then the device remembers him. About 20,000 combinations — a
+guard against a sibling rather than an attacker, which is the right amount of
+security for a sticker collection.
+
+### Schema changes
+
+`supabase/migrations/` is applied by the Supabase GitHub integration on push to
+`main`, so migrations must use the `<timestamp>_name.sql` prefix the CLI expects
+and should be written idempotently.
+
+### Environment
+
+| Variable | What it does |
+|---|---|
+| `SUPABASE_URL` | Project URL. Absent means sync is simply off. |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Bypasses row-level security.** Server-only, never committed. |
+| `SESSION_SECRET` | Signs the session cookie. Blank means nobody is ever signed in. |
+| `CRON_SECRET` | Guards the keep-alive route. |
+
+RLS is on for every table with **no policies at all**, which is deliberate: all
+access goes through server routes holding the service-role key, so a leaked
+anon key reads nothing. Supabase's linter flags this as INFO; it is the intended
+posture, not an oversight.
+
+Free-tier projects sleep after about a week idle, so `vercel.json` schedules
+`/api/keepalive` daily — Vercel's Hobby plan restricts cron frequency, and daily
+leaves margin that a weekly job running late would not. `/grownups` reports when
+sync last succeeded, so a failure is visible rather than silent.
+
 ## Deploying
 
 Vercel, as planned — the tutor route is exactly what its serverless functions
@@ -213,12 +262,8 @@ streak must not become one more thing he is failing at.
 
 ## What's next
 
-**Build 2** — cross-device sync via Supabase with an **emoji password**
-(🍕🚀🐶🍕). He uses a shared family computer and a phone, so no device is truly
-his and progress has to follow him. `progress/store.ts` is already the single
-seam this goes behind.
-
-Then the **memory loop** — see [`docs/memory-loop.md`](docs/memory-loop.md).
+Cross-device sync is **built** — see above. What is recorded but not yet used
+is the **memory loop** — see [`docs/memory-loop.md`](docs/memory-loop.md).
 coderX watches what he likes, avoids, finds easy and finds hard, and feeds that
 back into what the game offers next and what Bolt already knows before he asks.
 The design note leads with the trap, because a stored conclusion that "he's bad

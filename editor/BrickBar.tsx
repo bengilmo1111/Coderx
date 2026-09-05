@@ -21,7 +21,7 @@ export function BrickBar({
   const bricks = bricksFor(brickIds);
 
   return (
-    <div className="border-t-[3px] border-ink bg-white/70 px-2 py-2 backdrop-blur">
+    <div className="border-t-[3px] border-ink bg-white/70 px-2 py-1.5 backdrop-blur">
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {bricks.map((brick) => (
           <button

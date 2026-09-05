@@ -289,49 +289,73 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Stage */}
         <section className="flex min-h-0 shrink-0 flex-col gap-2 p-2 lg:flex-1">
-          <div className="h-[27dvh] min-h-36 lg:h-auto lg:max-h-[62dvh] lg:flex-1">
+          <div className="relative h-[18dvh] min-h-24 lg:h-auto lg:max-h-[34dvh] lg:flex-1">
             <Stage world={world} frames={runResult?.frames ?? []} index={playback.index} t={playback.t} />
+
           </div>
 
-          <div className="flex items-center gap-2 px-1">
-            <span className="text-sm">🎯</span>
-            <p className="min-w-0 flex-1 truncate text-[13px] font-bold">{level.goalText}</p>
-            <button
-              type="button"
-              onClick={() => setShowBrief(true)}
-              className="chunk min-h-9 bg-white px-2 text-xs"
-              title="Read the case file again"
-            >
-              📄
-            </button>
-          </div>
-
-          <RunBar playback={playback} hasCode={program.length > 0} onRun={run} onStop={playback.pause} />
-
-          {banner && (
-            <div className="panel shake border-danger bg-rose-50 p-3">
-              <p className="text-sm font-black leading-snug">🤖 {banner.boltSays}</p>
-              {banner.tryThis && <p className="mt-1 text-xs font-bold opacity-70">{banner.tryThis}</p>}
+          {/* While something has gone wrong, Bolt says so HERE, in place of the
+              goal. Two earlier versions were both wrong: a block of its own
+              squeezed the code down to one clipped line on a phone, and an
+              overlay covered the row of the world where the mistake actually
+              happened — which is the half of the lesson you can see. */}
+          {banner ? (
+            <div className="panel shake flex items-start gap-2 border-danger bg-rose-50 px-2 py-1">
+              <span className="text-sm leading-5">🤖</span>
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 text-[13px] font-black leading-snug">{banner.boltSays}</p>
+                {banner.tryThis && (
+                  <p className="line-clamp-1 text-[11px] font-bold leading-snug opacity-70">{banner.tryThis}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setBanner(null)}
+                aria-label="Close"
+                className="-mt-0.5 px-1 text-sm font-black opacity-45"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-sm">🎯</span>
+              <p className="min-w-0 flex-1 truncate text-[13px] font-bold">{level.goalText}</p>
+              <button
+                type="button"
+                onClick={() => setShowBrief(true)}
+                className="chunk min-h-9 bg-white px-2 text-xs"
+                title="Read the case file again"
+              >
+                📄
+              </button>
             </div>
           )}
+
+          <RunBar playback={playback} hasCode={program.length > 0} onRun={run} onStop={playback.pause} />
         </section>
 
         {/* Code */}
-        <section className="flex min-h-0 flex-1 flex-col border-t-[3px] border-ink lg:border-l-[3px] lg:border-t-0">
-          <div className="flex items-center gap-2 border-b-2 border-black/10 px-2 py-1">
-            <span className="flex-1 text-[11px] font-black uppercase tracking-wide opacity-50">Your code</span>
-            <button type="button" onClick={() => setTyping((v) => !v)} className="chunk bg-white px-2 text-xs" title="Type a line yourself for bonus XP">
+        <section className="flex min-h-[32dvh] flex-1 flex-col border-t-[3px] border-ink lg:min-h-0 lg:border-l-[3px] lg:border-t-0">
+          <div className="flex items-center gap-1.5 border-b-2 border-black/10 px-2 py-0.5">
+            <span className="hidden text-[11px] font-black uppercase tracking-wide opacity-50 sm:block sm:flex-1">
+              Your code
+            </span>
+            <button type="button" onClick={() => setShowBolt(true)} className="chunk min-h-9 bg-white px-2 text-xs">
+              🤖 Bolt
+            </button>
+            <button type="button" onClick={() => setTyping((v) => !v)} className="chunk min-h-9 bg-white px-2 text-xs" title="Type a line yourself for bonus XP">
               ⌨️ +{15}
             </button>
-            <button type="button" onClick={undo} disabled={!history.length} className="chunk bg-white px-2 text-xs">
+            <button type="button" onClick={undo} disabled={!history.length} className="chunk min-h-9 bg-white px-2 text-xs">
               ↶
             </button>
             {selection && (
               <>
-                <button type="button" onClick={() => setProgram(moveStmt(program, selection.stmtId, -1))} className="chunk bg-white px-2 text-xs">
+                <button type="button" onClick={() => setProgram(moveStmt(program, selection.stmtId, -1))} className="chunk min-h-9 bg-white px-2 text-xs">
                   ↑
                 </button>
-                <button type="button" onClick={() => setProgram(moveStmt(program, selection.stmtId, 1))} className="chunk bg-white px-2 text-xs">
+                <button type="button" onClick={() => setProgram(moveStmt(program, selection.stmtId, 1))} className="chunk min-h-9 bg-white px-2 text-xs">
                   ↓
                 </button>
                 <button
@@ -340,9 +364,9 @@ export function PlayScreen({ levelId }: { levelId: string }) {
                     setProgram(removeStmt(program, selection.stmtId));
                     setSelection(null);
                   }}
-                  className="chunk bg-rose-300 px-2 text-xs"
+                  className="chunk min-h-9 bg-rose-300 px-2 text-xs"
                 >
-                  🗑
+                  ✕
                 </button>
               </>
             )}
@@ -367,7 +391,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div data-testid="code-scroll" className="min-h-0 flex-1 overflow-y-auto">
             <CodeList
               program={program}
               selection={selection}
@@ -377,10 +401,6 @@ export function PlayScreen({ levelId }: { levelId: string }) {
               errorStmtId={runResult?.error?.stmtId ?? null}
             />
           </div>
-
-          <button type="button" onClick={() => setShowBolt(true)} className="chunk mx-2 mb-2 bg-white py-2 text-sm">
-            🤖 Ask Bolt
-          </button>
 
           <BrickBar brickIds={level.bricks} onTap={tapBrick} onShowHelp={(b) => setBanner(new CoderXError(BRICKS[b.id].help))} />
         </section>

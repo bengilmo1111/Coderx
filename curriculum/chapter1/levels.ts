@@ -13,8 +13,6 @@ import { parse } from '@/lang/parser';
 import { buildWorld } from '@/runtime/world';
 import type { Level } from '../types';
 
-const grass = (n: number) => '.'.repeat(n);
-
 export const CHAPTER1: Level[] = [
   {
     id: 'c1l1',
@@ -28,9 +26,9 @@ export const CHAPTER1: Level[] = [
     goalText: 'Get the rubbish into the bin.',
     makeWorld: () =>
       buildWorld({
-        grid: [grass(5), '---B.', grass(5)],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 1 } },
-        rubbish: [{ x: 1, y: 1 }],
+        grid: ['---B-'],
+        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+        rubbish: [{ x: 1, y: 0 }],
       }),
     makeStarter: () => [],
     bricks: ['move', 'grab', 'drop'],
@@ -63,9 +61,9 @@ drop(sniff)`,
     goalText: 'Bin the rubbish, but use the number box.',
     makeWorld: () =>
       buildWorld({
-        grid: [grass(7), '-----B.', grass(7)],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 1 } },
-        rubbish: [{ x: 2, y: 1 }],
+        grid: ['-----B-'],
+        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+        rubbish: [{ x: 2, y: 0 }],
       }),
     makeStarter: () => [],
     bricks: ['move-n', 'move', 'grab', 'drop'],
@@ -97,9 +95,9 @@ drop(sniff)`,
     goalText: 'Use a repeat to cross all six squares.',
     makeWorld: () =>
       buildWorld({
-        grid: [grass(8), '------B.', grass(8)],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 1 } },
-        rubbish: [{ x: 0, y: 1 }],
+        grid: ['------B-'],
+        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+        rubbish: [{ x: 0, y: 0 }],
       }),
     makeStarter: () => [],
     bricks: ['move-n', 'grab', 'drop', 'repeat'],
@@ -132,12 +130,12 @@ drop(sniff)`,
     goalText: 'Bin all three pieces of rubbish.',
     makeWorld: () =>
       buildWorld({
-        grid: [grass(7), '-B-B-B-', grass(7)],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 1 } },
+        grid: ['-B-B-B-'],
+        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
         rubbish: [
-          { x: 0, y: 1 },
-          { x: 2, y: 1 },
-          { x: 4, y: 1 },
+          { x: 0, y: 0 },
+          { x: 2, y: 0 },
+          { x: 4, y: 0 },
         ],
       }),
     makeStarter: () => [],
@@ -171,12 +169,12 @@ drop(sniff)`,
     goalText: 'Bin every piece — without grabbing at nothing.',
     makeWorld: () =>
       buildWorld({
-        grid: [grass(6), 'BBBBB.', grass(6)],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 1 } },
+        grid: ['BBBBB-'],
+        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
         rubbish: [
-          { x: 0, y: 1 },
-          { x: 2, y: 1 },
-          { x: 3, y: 1 },
+          { x: 0, y: 0 },
+          { x: 2, y: 0 },
+          { x: 3, y: 0 },
         ],
       }),
     makeStarter: () => [],
@@ -212,12 +210,12 @@ drop(sniff)`,
     goalText: 'Bin everything, then make Sniff say something.',
     makeWorld: () =>
       buildWorld({
-        grid: [grass(11), 'B.B.B.B.B..', grass(11)],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 1 } },
+        grid: ['B-B-B-B-B--'],
+        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
         rubbish: [
-          { x: 0, y: 1 },
-          { x: 4, y: 1 },
-          { x: 8, y: 1 },
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 8, y: 0 },
         ],
       }),
     makeStarter: () => [],

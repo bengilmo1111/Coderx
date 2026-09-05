@@ -8,9 +8,9 @@ import { hole, type Program } from '@/lang/types';
 
 const street = () =>
   buildWorld({
-    grid: ['.....', '---B.', '.....'],
-    sprites: { sniff: { character: 'sniff', x: 0, y: 1 } },
-    rubbish: [{ x: 1, y: 1 }],
+    grid: ['---B.'],
+    sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+    rubbish: [{ x: 1, y: 0 }],
   });
 
 describe('parser', () => {

@@ -11,6 +11,21 @@ import { CHARACTERS, type Effect, type Frame, type WorldState } from './world';
 
 const INK = '#12100e';
 
+/**
+ * Litter, and specifically NOT a wastebasket.
+ *
+ * Rubbish used to be drawn as 🗑️ — which is a bin — sitting on a board whose
+ * goal is putting things in a bin. Two bins on screen, and no way for an
+ * 8-year-old to tell which was which. Everything here is unmistakably dropped
+ * litter, and it varies per piece so a messy street looks messy.
+ */
+const LITTER = ['🍌', '🥤', '🍕', '📰', '🧃'];
+
+export function litterGlyph(id: string): string {
+  const n = [...id].reduce((sum, c) => sum + c.charCodeAt(0), 0);
+  return LITTER[n % LITTER.length];
+}
+
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 
@@ -223,7 +238,13 @@ export function drawScene(
     const y = before ? lerp(before.y, r.y, ease) : r.y;
     const { cx, cy } = centre(x, y);
     const carried = Object.values(world.sprites).some((s) => s.carrying === r.id);
-    glyph(ctx, '🗑️', cx, cy + (carried ? -L.cell * 0.42 : L.cell * 0.06), L.cell * (carried ? 0.34 : 0.46));
+    glyph(
+      ctx,
+      litterGlyph(r.id),
+      cx,
+      cy + (carried ? -L.cell * 0.42 : L.cell * 0.08),
+      L.cell * (carried ? 0.36 : 0.5),
+    );
   }
 
   // Characters.

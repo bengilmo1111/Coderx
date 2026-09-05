@@ -149,3 +149,44 @@ test('a nested if inside a repeat can be built by tapping', async ({ page }) => 
   await page.getByRole('button', { name: /Run it/ }).click();
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 30_000 });
 });
+
+/**
+ * Regression from real playtesting on a phone.
+ *
+ * Henry could not see his own code: it had been squeezed to a single clipped
+ * line at the bottom of the screen, because the stage, the goal, the run bar,
+ * Bolt's error block and an Ask Bolt row all took fixed height first and the
+ * code got whatever was left. The viewport here is deliberately 660px — a
+ * 390x844 phone minus the browser's own chrome, which is what he actually has.
+ */
+test('the code stays visible on a real phone, even with an error showing', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 660 });
+  await enterHQ(page);
+  await openLevelOne(page);
+
+  // Grabbing before moving finds nothing — the worst case for layout, because
+  // Bolt's error used to take a whole block of its own.
+  await tapBrick(page, 'grab');
+  await tapBrick(page, 'move', goRight(page));
+  await tapBrick(page, 'move', goRight(page));
+
+  await page.getByRole('button', { name: /Run it/ }).click();
+  await expect(page.getByText(/grabbed some air|bonked/)).toBeVisible({ timeout: 20_000 });
+
+  const scroller = page.getByTestId('code-scroll');
+  const box = await scroller.boundingBox();
+  expect(box).not.toBeNull();
+
+  // Enough room for several lines, not one clipped one. It was 40px.
+  expect(box!.height).toBeGreaterThan(180);
+  // And it must sit inside the viewport rather than off the bottom.
+  expect(box!.y + box!.height).toBeLessThanOrEqual(660);
+
+  // The first line of his code is actually on screen.
+  const first = page.getByRole('listitem').first();
+  const fb = await first.boundingBox();
+  expect(fb!.y).toBeGreaterThan(box!.y - 1);
+  expect(fb!.y + fb!.height).toBeLessThanOrEqual(660);
+
+  await page.screenshot({ path: 'screenshots/phone-small-play.png' });
+});

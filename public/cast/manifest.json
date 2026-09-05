@@ -5,5 +5,11 @@
   "bolt": "/cast/bolt.png",
   "nan": "/cast/nan.png",
   "meatball": "/cast/meatball.png",
-  "dragon": "/cast/dragon.png"
+  "dragon": "/cast/dragon.png",
+  "bolt:drill": "/cast/bolt-drill.png",
+  "bolt:jet": "/cast/bolt-jet.png",
+  "bolt:magnet": "/cast/bolt-magnet.png",
+  "item:rubbish": "/cast/rubbish.png",
+  "item:sword": "/cast/sword.png",
+  "item:part": "/cast/part.png"
 }

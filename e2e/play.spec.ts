@@ -190,3 +190,111 @@ test('the code stays visible on a real phone, even with an error showing', async
 
   await page.screenshot({ path: 'screenshots/phone-small-play.png' });
 });
+
+/** Start at a later level rather than replaying the earlier ones. */
+async function unlockThrough(page: Page, count: number) {
+  const ids = ['c1l1', 'c1l2', 'c1l3', 'c1l4', 'c1l5', 'c1l6'].slice(0, count);
+  await page.addInitScript((done: string[]) => {
+    window.localStorage.setItem(
+      'coderx.progress.v1',
+      JSON.stringify({
+        version: 1,
+        agentName: 'Turbo',
+        hqName: 'The Shed',
+        xp: 300,
+        levels: Object.fromEntries(done.map((id) => [id, { completed: true }])),
+        stickers: [],
+        clubCards: [],
+        streak: { lastDay: null, count: 0, best: 0, freezes: 2 },
+        mastery: {},
+        sessions: {},
+        typedLines: 0,
+        createdAt: new Date().toISOString(),
+      }),
+    );
+  }, ids);
+}
+
+/** Is this brick actually within the visible part of the scrolling bar? */
+async function brickIsInView(page: Page, label: string) {
+  const bar = await page.getByTestId('brick-scroller').boundingBox();
+  const brick = await page.getByRole('button', { name: label, exact: true }).boundingBox();
+  if (!bar || !brick) return false;
+  return brick.x >= bar.x - 1 && brick.x + brick.width <= bar.x + bar.width + 1;
+}
+
+/**
+ * Reported after run 1: "chapter 1 page 6, bricks went off the edge of the
+ * screen with no scroll." The row did scroll, but with the scrollbar hidden and
+ * no arrows there was nothing to say so — which on a desktop, with no touch to
+ * swipe with, made the last bricks simply unreachable.
+ */
+test('every brick on the busiest level can actually be reached', async ({ page }) => {
+  await unlockThrough(page, 5);
+  await page.goto('/play/c1l6');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  // 'bark' is the last of the eight bricks on this level.
+  for (let i = 0; i < 8 && !(await brickIsInView(page, 'bark')); i += 1) {
+    await page.getByRole('button', { name: 'More bricks' }).last().click();
+    await page.waitForTimeout(250);
+  }
+
+  expect(await brickIsInView(page, 'bark')).toBe(true);
+  await page.getByRole('button', { name: 'bark', exact: true }).click();
+  await expect(page.getByRole('list').first()).toContainText('bark(sniff)');
+});
+
+/**
+ * Also from run 1: "repeat and if need better ux. you should be able to move
+ * bricks into the function, rather than have to know to write repeat first and
+ * then add move."
+ */
+test('tapping repeat with a line selected wraps that line', async ({ page }) => {
+  await unlockThrough(page, 3);
+  await page.goto('/play/c1l4');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  // A brick is already selected once added, so this is the real flow: tap the
+  // thing, then tap repeat around it.
+  await page.getByRole('button', { name: 'grab', exact: true }).click();
+  await page.getByRole('button', { name: 'repeat', exact: true }).click();
+  await page.getByRole('button', { name: '3', exact: true }).click();
+  await page.getByRole('button', { name: /Use 3/ }).click();
+
+  const code = page.getByRole('list').first();
+  await expect(code).toContainText('repeat 3 {');
+  // The grab is now indented inside the loop rather than sitting after it.
+  const grabLine = page.getByRole('listitem').filter({ hasText: 'grab' }).first();
+  const repeatLine = page.getByRole('listitem').filter({ hasText: 'repeat' }).first();
+  const grabBox = await grabLine.boundingBox();
+  const repeatBox = await repeatLine.boundingBox();
+  expect(grabBox!.x).toBeGreaterThan(repeatBox!.x);
+});
+
+test('a brick can be walked into a block and back out with the arrows', async ({ page }) => {
+  await unlockThrough(page, 3);
+  await page.goto('/play/c1l4');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  // An empty repeat, then a grab after it.
+  await page.getByRole('button', { name: 'repeat', exact: true }).click();
+  await page.getByRole('button', { name: '2', exact: true }).click();
+  await page.getByRole('button', { name: /Use 2/ }).click();
+  await expect(page.getByText('tap a brick to put it in here')).toBeVisible();
+
+  await page.getByRole('listitem').filter({ hasText: /^\d+\}$/ }).first().click();
+  await page.getByRole('button', { name: 'grab', exact: true }).click();
+
+  const grabLine = () => page.getByRole('listitem').filter({ hasText: 'grab' }).first();
+  const outdented = (await grabLine().boundingBox())!.x;
+
+  // It is already selected, so press up: it should climb into the repeat above.
+  await page.getByRole('button', { name: '↑' }).click();
+  expect((await grabLine().boundingBox())!.x).toBeGreaterThan(outdented);
+  await expect(page.getByText('tap a brick to put it in here')).toHaveCount(0);
+
+  // And back out again.
+  await page.getByRole('button', { name: '↓' }).click();
+  expect((await grabLine().boundingBox())!.x).toBe(outdented);
+});

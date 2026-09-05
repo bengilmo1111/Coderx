@@ -42,7 +42,7 @@ export function CodeList({
     <ol className="flex flex-col gap-0.5 p-2 font-[family-name:var(--font-code)] text-[15px] leading-tight sm:text-base">
       {lines.map((line) => (
         <Line
-          key={`${line.stmtId}-${line.isCloser ? 'end' : 'start'}`}
+          key={`${line.stmtId}-${line.isSlot ? 'slot' : line.isCloser ? 'end' : 'start'}`}
           line={line}
           selected={selection?.stmtId === line.stmtId && selection.closer === line.isCloser}
           running={runningStmtId === line.stmtId}
@@ -70,6 +70,21 @@ function Line({
   onSelect: (sel: Selection | null) => void;
   onTapArg: (stmtId: string, index: number | 'count' | 'cond') => void;
 }) {
+  // An empty block's inside: a visible invitation rather than a blank gap.
+  if (line.isSlot) {
+    return (
+      <li
+        style={{ marginLeft: line.indent * 20 }}
+        className={`flex min-h-[38px] cursor-pointer items-center rounded-lg border-2 border-dashed px-3 text-[12px] font-bold ${
+          selected ? 'border-ink bg-pop/60' : 'border-black/25 opacity-55'
+        }`}
+        onClick={() => onSelect({ stmtId: line.stmtId, closer: false })}
+      >
+        {line.segments[0].text}
+      </li>
+    );
+  }
+
   return (
     <li
       style={{ marginLeft: line.indent * 20 }}

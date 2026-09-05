@@ -89,30 +89,37 @@ drop(sniff)`,
     index: 3,
     title: 'Three Lots of Two',
     briefing:
-      "The bin is now six squares away, because Nan McSnap moved it in the night and pretended she " +
-      "was 'just having a lovely walk'. Sniff has the rubbish already. Instead of writing move six times, " +
-      "wrap it in a repeat — a repeat does the same thing again and again for you.",
-    goalText: 'Use a repeat to cross all six squares.',
+      "Nan McSnap has been busy in the night. She has put a bin on every second square, and a bag of " +
+      "rubbish on top of every single one of them, which she says is 'tidier'. It is not tidier. " +
+      "You could tell Sniff what to do at each bin one at a time — or you could tell him once, and use " +
+      "a repeat to make him do it again and again.",
+    goalText: 'Bin all three — in 5 lines or fewer.',
     makeWorld: () =>
       buildWorld({
-        grid: ['------B-'],
+        grid: ['B-B-B--'],
         sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
-        rubbish: [{ x: 0, y: 0 }],
+        rubbish: [
+          { x: 0, y: 0 },
+          { x: 2, y: 0 },
+          { x: 4, y: 0 },
+        ],
       }),
     makeStarter: () => [],
     bricks: ['move-n', 'grab', 'drop', 'repeat'],
-    goal: ({ world }) => world.binned === 1,
-    reference: `grab(sniff)
-repeat 3 {
+    goal: ({ world, size }) => world.binned === 3 && size <= 5,
+    reference: `repeat 3 {
+  grab(sniff)
+  drop(sniff)
   move(sniff, right, 2)
-}
-drop(sniff)`,
+}`,
     par: 4,
+    maxLines: 5,
     skills: ['code.loops', 'maths.times-tables', 'maths.position'],
     hints: [
-      'The rubbish is already under his nose. Grab it first, then worry about the walking.',
-      'You need 6 squares. If he goes 2 squares each go, how many goes does he need?',
-      'Three goes of two squares makes six. Try repeat 3 with move(sniff, right, 2) inside.',
+      'Do one bin by hand first. Grab it, drop it in, then step along. Now look at where he ends up.',
+      'He lands on the next bin, with rubbish on it — so the same three commands work all over again.',
+      'Wrap grab, drop and move(sniff, right, 2) in a repeat 3. Three goes of two squares is six.',
+      'Doing all three by hand works, but it is eight lines and you have five. The repeat is what shrinks it.',
     ],
     reward: { xp: 45, sticker: 'kea-feather' },
     bridgeCard: 'loops',
@@ -127,7 +134,7 @@ drop(sniff)`,
       "Whoever laid out this street did it in a pattern: rubbish, bin, rubbish, bin, all the way along. " +
       "Weka says this was 'not him'. Weka is holding a chip packet while he says it. " +
       "Find the pattern, and let the repeat do the boring bit.",
-    goalText: 'Bin all three pieces of rubbish.',
+    goalText: 'Bin all three — in 6 lines or fewer.',
     makeWorld: () =>
       buildWorld({
         grid: ['-B-B-B-'],
@@ -140,7 +147,7 @@ drop(sniff)`,
       }),
     makeStarter: () => [],
     bricks: ['move', 'grab', 'drop', 'repeat'],
-    goal: ({ world }) => world.binned === 3,
+    goal: ({ world, size }) => world.binned === 3 && size <= 6,
     reward: { xp: 55, sticker: 'weka-mugshot' },
     reference: `repeat 3 {
   grab(sniff)
@@ -149,11 +156,13 @@ drop(sniff)`,
   move(sniff, right)
 }`,
     par: 5,
+    maxLines: 6,
     skills: ['code.loops', 'maths.skip-counting', 'maths.position'],
     hints: [
       'Do it once by hand first. Grab, step, drop, step. Now look at where he ends up.',
       'After one go he is standing on the next piece of rubbish. That means the same four commands work again.',
       'Put grab, move, drop, move inside a repeat 3.',
+      'Writing it out four times works too, but it will not fit in the lines you have. Wrap it.',
     ],
   },
 
@@ -166,7 +175,7 @@ drop(sniff)`,
       "Every square on this street is a bin. Handy. But only SOME of them have rubbish on them, and if " +
       "Sniff tries to grab thin air he falls over and everyone laughs, including Nan. " +
       "You need a command that checks first: if there is rubbish here, then grab it.",
-    goalText: 'Bin every piece — without grabbing at nothing.',
+    goalText: 'Bin every piece — in 6 lines or fewer.',
     makeWorld: () =>
       buildWorld({
         grid: ['BBBBB-'],
@@ -179,7 +188,7 @@ drop(sniff)`,
       }),
     makeStarter: () => [],
     bricks: ['move', 'grab', 'drop', 'repeat', 'if-rubbish'],
-    goal: ({ world }) => world.binned === 3,
+    goal: ({ world, size }) => world.binned === 3 && size <= 6,
     reference: `repeat 5 {
   if rubbishHere(sniff) {
     grab(sniff)
@@ -188,11 +197,13 @@ drop(sniff)`,
   move(sniff, right)
 }`,
     par: 5,
+    maxLines: 6,
     skills: ['code.conditionals', 'maths.logic', 'code.loops'],
     hints: [
       'The if block asks a yes-or-no question and only runs the inside when the answer is yes.',
       'He is standing on a bin the whole time — so grab and drop can happen on the same square.',
       'Put grab and drop INSIDE the if, and the move outside it so he always keeps walking.',
+      'Doing each square by hand works, but not in six lines. One repeat, with an if inside it.',
     ],
     reward: { xp: 65, sticker: 'nan-wanted-poster' },
     bridgeCard: 'conditionals',
@@ -207,7 +218,7 @@ drop(sniff)`,
       "This is it. The whole street. The bins are every second square, the rubbish is somewhere among " +
       "them, and Nan McSnap is watching from behind a hedge with a thermos. Clean it up — and when you " +
       "are done, give Sniff something to say. He has earned a line.",
-    goalText: 'Bin everything, then make Sniff say something.',
+    goalText: 'Bin everything and give Sniff a line — in 7 lines or fewer.',
     makeWorld: () =>
       buildWorld({
         grid: ['B-B-B-B-B--'],
@@ -220,7 +231,8 @@ drop(sniff)`,
       }),
     makeStarter: () => [],
     bricks: ['move-n', 'move', 'grab', 'drop', 'repeat', 'if-rubbish', 'say', 'bark'],
-    goal: ({ world, saids }) => world.binned === 3 && saids.some((s) => s.trim().length > 0),
+    goal: ({ world, saids, size }) =>
+      world.binned === 3 && saids.some((s) => s.trim().length > 0) && size <= 7,
     reference: `repeat 5 {
   if rubbishHere(sniff) {
     grab(sniff)
@@ -230,6 +242,7 @@ drop(sniff)`,
 }
 say(sniff, "case closed")`,
     par: 6,
+    maxLines: 7,
     skills: [
       'code.loops',
       'code.conditionals',
@@ -241,6 +254,7 @@ say(sniff, "case closed")`,
       'This is level 5 again, but the bins are further apart. What changes?',
       'The bins are every SECOND square now — so each step needs to be 2, not 1.',
       'Use move(sniff, right, 2) inside your repeat, and put a say at the very end.',
+      'Everything except the say goes inside one repeat. That is how it fits.',
     ],
     reward: { xp: 100, sticker: 'bin-day-medal' },
   },

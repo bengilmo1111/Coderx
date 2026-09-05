@@ -16,6 +16,12 @@ export interface CodeLine {
   line: number;
   /** Closing "}" lines aren't tappable targets for insertion. */
   isCloser: boolean;
+  /**
+   * An empty block's inside. Rendered as an inviting dashed row rather than the
+   * nothing that used to be there — the gap between { and } was invisible, so
+   * there was no way to see that a block HAS an inside, let alone aim at it.
+   */
+  isSlot: boolean;
   segments: Segment[];
 }
 
@@ -69,7 +75,7 @@ export function printProgram(program: Program): CodeLine[] {
           segments.push(exprSegment(a, { stmtId: s.id, index: i }));
         });
         segments.push({ kind: 'punct', text: ')' });
-        lines.push({ stmtId: s.id, indent, line: n, isCloser: false, segments });
+        lines.push({ stmtId: s.id, indent, line: n, isCloser: false, isSlot: false, segments });
         continue;
       }
 
@@ -81,6 +87,7 @@ export function printProgram(program: Program): CodeLine[] {
         indent,
         line: n,
         isCloser: false,
+        isSlot: false,
         segments: [
           { kind: 'keyword', text: keyword },
           { kind: 'punct', text: ' ' },
@@ -88,6 +95,16 @@ export function printProgram(program: Program): CodeLine[] {
           { kind: 'punct', text: ' {' },
         ],
       });
+      if (s.body.length === 0) {
+        lines.push({
+          stmtId: s.id,
+          indent: indent + 1,
+          line: n,
+          isCloser: false,
+          isSlot: true,
+          segments: [{ kind: 'punct', text: 'tap a brick to put it in here' }],
+        });
+      }
       walk(s.body, indent + 1);
       n += 1;
       lines.push({
@@ -95,6 +112,7 @@ export function printProgram(program: Program): CodeLine[] {
         indent,
         line: n,
         isCloser: true,
+        isSlot: false,
         segments: [{ kind: 'punct', text: '}' }],
       });
     }
@@ -107,6 +125,7 @@ export function printProgram(program: Program): CodeLine[] {
 /** Plain text, for Type-It-Yourself round-tripping and for the tutor prompt. */
 export function printSource(program: Program): string {
   return printProgram(program)
+    .filter((l) => !l.isSlot) // the slot is a prompt to the reader, not code
     .map((l) => '  '.repeat(l.indent) + l.segments.map((s) => s.text).join(''))
     .join('\n');
 }

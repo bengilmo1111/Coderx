@@ -84,18 +84,108 @@ export function removeStmt(program: Program, id: string): Program {
     .map((s) => (isBlock(s) ? withBody(s, removeStmt(s.body, id)) : s));
 }
 
-/** Nudge a statement up or down within its own block. Simpler and far more
- *  reliable on a phone than drag-and-drop, and it survives fat fingers. */
+/** Indices from the root down to a statement. */
+type Path = number[];
+
+function findPath(program: Program, id: string, prefix: Path = []): Path | null {
+  for (let i = 0; i < program.length; i += 1) {
+    const s = program[i];
+    if (s.id === id) return [...prefix, i];
+    if (isBlock(s)) {
+      const deeper = findPath(s.body, id, [...prefix, i]);
+      if (deeper) return deeper;
+    }
+  }
+  return null;
+}
+
+/** The statement list reached by walking `path` into nested block bodies. */
+function listAt(program: Program, path: Path): Stmt[] {
+  let list: Stmt[] = program;
+  for (const i of path) {
+    const s = list[i];
+    if (!isBlock(s)) throw new Error('listAt: path does not lead into a block');
+    list = s.body;
+  }
+  return list;
+}
+
+/**
+ * Move a statement up or down — including INTO and OUT OF blocks.
+ *
+ * Henry's words after playing: "you should be able to move bricks into the
+ * function, rather than have to know to write repeat first and then add move."
+ * The old version could only swap two statements inside the same block, so what
+ * he was reaching for was not merely hidden, it was impossible.
+ *
+ * Two buttons rather than drag-and-drop: dragging a nested block on a phone with
+ * eight-year-old fingers is a much worse deal than pressing an arrow twice.
+ *
+ * Going down: into the block below as its FIRST child, else swap with the next
+ * statement, else step out to just after the enclosing block. Going up mirrors
+ * it — into the block above as its LAST child, else swap, else out to just
+ * before the enclosing block.
+ */
 export function moveStmt(program: Program, id: string, delta: -1 | 1): Program {
-  const i = program.findIndex((s) => s.id === id);
-  if (i !== -1) {
-    const j = i + delta;
-    if (j < 0 || j >= program.length) return program;
-    const next = [...program];
-    [next[i], next[j]] = [next[j], next[i]];
+  const next = structuredClone(program) as Program;
+  const path = findPath(next, id);
+  if (!path) return program;
+
+  const index = path[path.length - 1];
+  const parent = listAt(next, path.slice(0, -1));
+  const [node] = parent.splice(index, 1);
+  const insideABlock = path.length >= 2;
+
+  if (delta === 1) {
+    const below = parent[index]; // whatever followed it, now shifted into place
+    if (below && isBlock(below)) {
+      below.body.unshift(node);
+      return next;
+    }
+    if (index < parent.length) {
+      parent.splice(index + 1, 0, node);
+      return next;
+    }
+    if (insideABlock) {
+      const grandparent = listAt(next, path.slice(0, -2));
+      grandparent.splice(path[path.length - 2] + 1, 0, node);
+      return next;
+    }
+    return program; // last line of the program: nowhere to go
+  }
+
+  const above = parent[index - 1];
+  if (above && isBlock(above)) {
+    above.body.push(node);
     return next;
   }
-  return program.map((s) => (isBlock(s) ? withBody(s, moveStmt(s.body, id, delta)) : s));
+  if (index > 0) {
+    parent.splice(index - 1, 0, node);
+    return next;
+  }
+  if (insideABlock) {
+    const grandparent = listAt(next, path.slice(0, -2));
+    grandparent.splice(path[path.length - 2], 0, node);
+    return next;
+  }
+  return program; // first line of the program: nowhere to go
+}
+
+/**
+ * Put an existing statement inside a new block.
+ *
+ * This is the other half of the same complaint. Tapping "repeat" with a line
+ * selected should wrap that line, because that is the order the idea arrives
+ * in: you do a thing, you notice you need it three times, THEN you reach for a
+ * loop. Building the empty loop first and knowing to aim inside it is
+ * programmer's word order, not a child's.
+ */
+export function wrapStmt(program: Program, stmtId: string, block: Stmt): Program {
+  if (!isBlock(block)) return program;
+  return program.map((s) => {
+    if (s.id === stmtId) return { ...block, body: [s] };
+    return isBlock(s) ? withBody(s, wrapStmt(s.body, stmtId, block)) : s;
+  });
 }
 
 export type ArgIndex = number | 'count' | 'cond';

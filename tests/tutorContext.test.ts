@@ -18,12 +18,28 @@ describe('the tutor knows what actually happened', () => {
   });
 
   it('reports a near miss without claiming it works', () => {
-    // Two lots of two is four squares, not six.
-    const sim = simulate(level, 'grab(sniff)\nrepeat 2 {\n  move(sniff, right, 2)\n}\ndrop(sniff)');
+    // Two goes round the loop, not three: two bins done and one left.
+    const sim = simulate(level, 'repeat 2 {\n  grab(sniff)\n  drop(sniff)\n  move(sniff, right, 2)\n}');
     expect(sim.solved).toBe(false);
-    expect(sim.binned).toBe(0);
+    expect(sim.binned).toBe(2);
     expect(sim.endedAt).toBe(4);
     expect(describeOutcome(sim)).toMatch(/does not solve/);
+  });
+
+  it('tells Bolt when it WORKS but is over the line budget', () => {
+    // The long way round: correct, but eight lines where five are allowed.
+    const brute = [
+      'grab(sniff)', 'drop(sniff)', 'move(sniff, right, 2)',
+      'grab(sniff)', 'drop(sniff)', 'move(sniff, right, 2)',
+      'grab(sniff)', 'drop(sniff)',
+    ].join('\n');
+    const sim = simulate(level, brute);
+    expect(sim.solved).toBe(false); // rejected by the budget
+    expect(sim.binned).toBe(3); // but it did the job
+    expect(sim.overBudget).toEqual({ used: 8, allowed: 5 });
+    const said = describeOutcome(sim);
+    expect(said).toMatch(/IT WORKS/);
+    expect(said).toMatch(/Never say it is wrong/);
   });
 
   it('passes on the error when the code walks into the fence', () => {
@@ -44,9 +60,9 @@ describe('the tutor knows what actually happened', () => {
 
   it('describes the board factually, including that it is one row', () => {
     const text = describeWorld(level.makeWorld());
-    expect(text).toContain('8 squares wide');
+    expect(text).toContain('7 squares wide');
     expect(text).toMatch(/only left and right matter/);
-    expect(text).toMatch(/Bins are at column\(s\): 6/);
+    expect(text).toMatch(/Bins are at column\(s\): 0, 2, 4/);
     expect(text).toMatch(/"sniff"/);
   });
 

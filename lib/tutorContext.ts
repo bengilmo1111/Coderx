@@ -12,6 +12,7 @@
  */
 
 import { parse } from '@/lang/parser';
+import { countStmts } from '@/editor/program';
 import { CoderXError } from '@/lang/errors';
 import { runProgram } from '@/runtime/run';
 import { CHARACTERS, type WorldState } from '@/runtime/world';
@@ -44,6 +45,8 @@ export interface Simulation {
   /** False when the code could not even be read (usually an unfilled hole). */
   ran: boolean;
   solved: boolean;
+  /** Set when the level has a line budget he is over. */
+  overBudget?: { used: number; allowed: number };
   error?: string;
   binned: number;
   needed: number;
@@ -60,8 +63,11 @@ export function simulate(level: Level, code: string): Simulation {
   try {
     const program = parse(code);
     const result = runProgram(program, level.makeWorld());
-    const solved = !result.error && level.goal({ world: result.finalWorld, saids: result.saids });
+    const size = countStmts(program);
+    const solved =
+      !result.error && level.goal({ world: result.finalWorld, saids: result.saids, size });
     const sniff = result.finalWorld.sprites.sniff;
+    const goalMet = !result.error && level.goal({ world: result.finalWorld, saids: result.saids, size: 0 });
     return {
       ran: true,
       solved,
@@ -69,7 +75,13 @@ export function simulate(level: Level, code: string): Simulation {
       binned: result.finalWorld.binned,
       needed,
       endedAt: sniff?.x,
-      statements: program.length,
+      statements: size,
+      // Distinguish "it doesn't work" from "it works but it's too long", so
+      // Bolt can say the right one.
+      overBudget:
+        level.maxLines && goalMet && size > level.maxLines
+          ? { used: size, allowed: level.maxLines }
+          : undefined,
     };
   } catch (e) {
     return {
@@ -92,7 +104,10 @@ export function describeOutcome(sim: Simulation): string {
   const parts = [
     sim.solved
       ? 'HIS CODE ALREADY SOLVES THIS LEVEL. Do not suggest changes to make it work — it works.'
-      : 'His code does not solve the level yet.',
+      : sim.overBudget
+        ? `IT WORKS, but this level allows ${sim.overBudget.allowed} lines and he used ${sim.overBudget.used}. ` +
+          'Praise that it works, then nudge him toward a repeat to make it shorter. Never say it is wrong.'
+        : 'His code does not solve the level yet.',
     `Rubbish binned: ${sim.binned} of ${sim.needed}.`,
   ];
   if (sim.endedAt !== undefined) parts.push(`Sniff finished at column ${sim.endedAt}.`);

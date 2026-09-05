@@ -6,6 +6,8 @@ export interface GoalContext {
   world: WorldState;
   /** Everything spoken during the run — lets a level require Henry to write. */
   saids: string[];
+  /** How many statements he wrote, nested ones included. */
+  size: number;
 }
 
 export interface Level {
@@ -27,6 +29,16 @@ export interface Level {
   reference: string;
   /** Statement count of the reference solution — beat or match it for bonus XP. */
   par: number;
+  /**
+   * A hard line budget, stated up front in the goal.
+   *
+   * Levels 5 and 6 were meant to teach loops and conditionals, and both could be
+   * beaten with a straight run of commands — level 5 solves in 9 plain lines. A
+   * budget makes the loop the only way through. It is part of the puzzle from
+   * the start rather than a rejection afterwards, which is the difference
+   * between a constraint and being told your right answer is wrong.
+   */
+  maxLines?: number;
   skills: SkillId[];
   /** Bolt's handwritten ladder. Also the fallback when the AI is unavailable. */
   hints: string[];

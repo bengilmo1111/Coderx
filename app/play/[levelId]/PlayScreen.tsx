@@ -7,7 +7,7 @@ import { CodeList } from '@/editor/CodeList';
 import { BrickBar } from '@/editor/BrickBar';
 import { HolePicker } from '@/editor/HolePicker';
 import { BRICKS, type Brick } from '@/editor/bricks';
-import { countStmts, firstHole, getArg, insertStmt, moveStmt, removeStmt, setArg, type ArgIndex, type Selection } from '@/editor/program';
+import { countStmts, findStmt, firstHole, getArg, insertStmt, moveStmt, removeStmt, setArg, wrapStmt, type ArgIndex, type Selection } from '@/editor/program';
 
 import { parse } from '@/lang/parser';
 import { printSource } from '@/lang/printer';
@@ -108,7 +108,15 @@ export function PlayScreen({ levelId }: { levelId: string }) {
 
   const tapBrick = (brick: Brick) => {
     const stmt = brick.make();
-    setProgram(insertStmt(program, selection, stmt));
+
+    // Tapping repeat or if with a line selected WRAPS that line, because that
+    // is the order the idea actually arrives in: you do a thing, you notice you
+    // need it three times, then you reach for a loop. Building the empty loop
+    // first and knowing to aim inside it is programmer's word order.
+    const target = selection && !selection.closer ? findStmt(program, selection.stmtId) : null;
+    const wrapping = (stmt.kind === 'repeat' || stmt.kind === 'if') && target?.kind === 'call';
+
+    setProgram(wrapping ? wrapStmt(program, selection!.stmtId, stmt) : insertStmt(program, selection, stmt));
     // Land the cursor on the new line so the next tap continues from here.
     setSelection({ stmtId: stmt.id, closer: false });
     // Open the right picker straight away — one tap to place, one to fill.
@@ -182,8 +190,8 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     if (!runResult || !playback.done || settled.current || !ready) return;
     settled.current = true;
 
-    const won = !runResult.error && level.goal({ world: runResult.finalWorld, saids: runResult.saids });
     const size = countStmts(program);
+    const won = !runResult.error && level.goal({ world: runResult.finalWorld, saids: runResult.saids, size });
     const before = levelProgress(state, level.id);
 
     if (runResult.error) {
@@ -338,9 +346,21 @@ export function PlayScreen({ levelId }: { levelId: string }) {
         {/* Code */}
         <section className="flex min-h-[32dvh] flex-1 flex-col border-t-[3px] border-ink lg:min-h-0 lg:border-l-[3px] lg:border-t-0">
           <div className="flex items-center gap-1.5 border-b-2 border-black/10 px-2 py-0.5">
-            <span className="hidden text-[11px] font-black uppercase tracking-wide opacity-50 sm:block sm:flex-1">
-              Your code
-            </span>
+            {/* The budget has to be visible while he writes, not sprung on him
+                when he runs it. */}
+            {level.maxLines ? (
+              <span
+                className={`shrink-0 rounded-md border-2 border-ink px-1.5 py-0.5 text-[11px] font-black sm:flex-1 sm:border-0 sm:px-0 ${
+                  countStmts(program) > level.maxLines ? 'bg-danger text-white sm:bg-transparent sm:text-red-600' : 'bg-pop'
+                }`}
+              >
+                {countStmts(program)}/{level.maxLines} lines
+              </span>
+            ) : (
+              <span className="hidden text-[11px] font-black uppercase tracking-wide opacity-50 sm:block sm:flex-1">
+                Your code
+              </span>
+            )}
             <button type="button" onClick={() => setShowBolt(true)} className="chunk min-h-9 bg-white px-2 text-xs">
               🤖 Bolt
             </button>

@@ -105,6 +105,20 @@ export function HomeScreen() {
           ))}
         </nav>
 
+        {tab === 'capers' && (
+          <Link href="/sandbox" className="panel mb-5 flex items-center gap-3 bg-pop/40 p-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-ink bg-white text-lg">
+              🛠️
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-black">The Workshop</span>
+              <span className="block truncate text-xs font-bold opacity-60">
+                No job, no rules. Mess about with everything.
+              </span>
+            </span>
+          </Link>
+        )}
+
         {tab === 'capers' &&
           CHAPTERS.map((chapter) => (
             <section key={chapter.number} className="mb-6">

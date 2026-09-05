@@ -59,6 +59,8 @@ export interface Level {
   requires?: { kind: Stmt['kind']; message: string }[];
   /** What the counting bricks call their variable on this level. */
   variable?: string;
+  /** Free play: no scoring, no unlocking, no winning, nothing to get wrong. */
+  sandbox?: boolean;
   skills: SkillId[];
   /** Bolt's handwritten ladder. Also the fallback when the AI is unavailable. */
   hints: string[];

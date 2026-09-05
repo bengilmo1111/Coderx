@@ -22,6 +22,13 @@ export const STICKERS: Record<string, Sticker> = {
   'sword-tally': { id: 'sword-tally', name: 'Sword Tally', glyph: '🧮', blurb: 'You counted things nobody had counted for you.' },
   'dragon-scale': { id: 'dragon-scale', name: 'Dragon Scale', glyph: '🐲', blurb: 'Still slightly warm.' },
   'dragon-slayer': { id: 'dragon-slayer', name: 'Dragon Sorter-Outer', glyph: '🏅', blurb: 'The dragon is fine. It just needed a lie down.' },
+
+  'first-cog': { id: 'first-cog', name: 'First Cog', glyph: '⚙️', blurb: 'Found by counting. Column 3, row 2.' },
+  'drill-mode': { id: 'drill-mode', name: 'Drill Mode', glyph: '🪛', blurb: 'Walls are a suggestion.' },
+  'jet-mode': { id: 'jet-mode', name: 'Jet Mode', glyph: '🚀', blurb: 'The floor is optional.' },
+  'nested-loop': { id: 'nested-loop', name: 'A Loop Inside a Loop', glyph: '🌀', blurb: 'Most grown-ups find this hard.' },
+  'own-command': { id: 'own-command', name: 'Your Own Command', glyph: '🏗️', blurb: 'You invented a word and the computer learned it.' },
+  rebuilt: { id: 'rebuilt', name: 'Fully Rebuilt', glyph: '🤖', blurb: 'Now only 12% toaster.' },
 };
 
 export function stickerList(ids: string[]): Sticker[] {

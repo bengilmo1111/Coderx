@@ -7,9 +7,28 @@
  */
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
-export type TileKind = 'grass' | 'path' | 'bin' | 'fence';
+/**
+ * `fence` means absolutely not. `wall` means not unless you are a drill, and
+ * `gap` means not unless you can fly — which is what gives a grid something to
+ * be about beyond being bigger than a street.
+ */
+export type TileKind = 'grass' | 'path' | 'bin' | 'fence' | 'wall' | 'gap';
 
 export type CharacterKey = 'sniff' | 'kea' | 'weka' | 'bolt' | 'nan' | 'meatball' | 'dragon';
+
+/**
+ * What Bolt is currently shaped like. Each mode is one small rule rather than a
+ * subsystem — the teaching load stays on coordinates, loops and functions, and
+ * transforming is what makes navigating the grid a puzzle.
+ */
+export type Mode = 'robot' | 'drill' | 'jet' | 'magnet';
+
+export const MODES: Record<Mode, { label: string; glyph: string; power: string }> = {
+  robot: { label: 'Robot', glyph: '🤖', power: 'Normal. Walks about. Cannot do anything clever.' },
+  drill: { label: 'Drill', glyph: '🪛', power: 'Goes straight through walls.' },
+  jet: { label: 'Jet', glyph: '🚀', power: 'Flies over gaps in the floor.' },
+  magnet: { label: 'Magnet', glyph: '🧲', power: 'Grabs things from the square next door.' },
+};
 
 /** Cast is half endemic NZ on purpose — this should feel like Henry's country. */
 export const CHARACTERS: Record<CharacterKey, { label: string; glyph: string; blurb: string }> = {
@@ -32,10 +51,12 @@ export interface SpriteState {
   /** Only things that can be fought have this. Zero means beaten. */
   health?: number;
   maxHealth?: number;
+  /** Only things that can transform have this. */
+  mode?: Mode;
 }
 
 /** Rubbish to bin, swords to fight with — same mechanics, different meaning. */
-export type ItemKind = 'rubbish' | 'sword';
+export type ItemKind = 'rubbish' | 'sword' | 'part';
 
 export interface ItemState {
   id: string;
@@ -104,13 +125,20 @@ export function buildWorld(spec: {
   grid: string[];
   sprites: Record<
     string,
-    { character: CharacterKey; x: number; y: number; facing?: Direction; health?: number }
+    { character: CharacterKey; x: number; y: number; facing?: Direction; health?: number; mode?: Mode }
   >;
   /** Shorthand for the common case; the same thing as items of kind 'rubbish'. */
   rubbish?: { x: number; y: number }[];
   items?: { x: number; y: number; kind: ItemKind }[];
 }): WorldState {
-  const legend: Record<string, TileKind> = { '.': 'grass', '-': 'path', B: 'bin', '#': 'fence' };
+  const legend: Record<string, TileKind> = {
+    '.': 'grass',
+    '-': 'path',
+    B: 'bin',
+    '#': 'fence',
+    W: 'wall',
+    _: 'gap',
+  };
   const tiles = spec.grid.map((row) =>
     [...row].map((ch) => {
       const t = legend[ch];
@@ -131,6 +159,7 @@ export function buildWorld(spec: {
       facing: s.facing ?? 'right',
       carrying: null,
       ...(s.health !== undefined ? { health: s.health, maxHealth: s.health } : {}),
+      ...(s.mode ? { mode: s.mode } : {}),
     };
   }
 

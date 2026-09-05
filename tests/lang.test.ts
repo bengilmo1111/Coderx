@@ -187,3 +187,59 @@ describe('variables and repeatUntil', () => {
     expect(() => parse('set swords 0')).toThrow(/needs an = after the name/);
   });
 });
+
+/**
+ * Chapter 3's headline: a command he made himself. He used the word "function"
+ * unprompted after run 1, and once defined the name turns into a brick he can
+ * tap — which is what a function actually is.
+ */
+describe('commands he defines himself', () => {
+  const yard = () =>
+    buildWorld({
+      grid: ['-----', '-----', '-----'],
+      sprites: { bolt: { character: 'bolt', x: 0, y: 0, mode: 'robot' } },
+    });
+
+  it('runs the body when the name is called', () => {
+    const r = runProgram(parse('define hop {\n  move(bolt, right)\n}\nhop()\nhop()'), yard());
+    expect(r.error).toBeUndefined();
+    expect(r.finalWorld.sprites.bolt.x).toBe(2);
+  });
+
+  it('prints back as real code', () => {
+    const src = 'define hop {\n  move(bolt, right)\n}\nhop()';
+    expect(printSource(parse(src))).toBe(src);
+  });
+
+  it('works even when defined after it is used', () => {
+    const r = runProgram(parse('hop()\ndefine hop {\n  move(bolt, down)\n}'), yard());
+    expect(r.error).toBeUndefined();
+    expect(r.finalWorld.sprites.bolt.y).toBe(1);
+  });
+
+  it('lets one of his commands use another', () => {
+    const r = runProgram(
+      parse('define step {\n  move(bolt, right)\n}\ndefine twice {\n  step()\n  step()\n}\ntwice()'),
+      yard(),
+    );
+    expect(r.error).toBeUndefined();
+    expect(r.finalWorld.sprites.bolt.x).toBe(2);
+  });
+
+  it('works inside a loop', () => {
+    const r = runProgram(parse('define hop {\n  move(bolt, right)\n}\nrepeat 3 {\n  hop()\n}'), yard());
+    expect(r.finalWorld.sprites.bolt.x).toBe(3);
+  });
+
+  it('stops a command that calls itself, with words he can act on', () => {
+    const r = runProgram(parse('define loopy {\n  loopy()\n}\nloopy()'), yard());
+    expect(r.error?.boltSays).toMatch(/keeps calling itself/);
+    expect(r.error?.tryThis).toMatch(/cannot use itself forever/);
+  });
+
+  it('still reaches the built-in commands', () => {
+    const r = runProgram(parse('define go {\n  move(bolt, right, 2)\n}\ngo()\nmove(bolt, down)'), yard());
+    expect(r.error).toBeUndefined();
+    expect(r.finalWorld.sprites.bolt).toMatchObject({ x: 2, y: 1 });
+  });
+});

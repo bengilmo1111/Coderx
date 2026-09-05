@@ -8,16 +8,22 @@
 import { parse } from '@/lang/parser';
 import { CHAPTER1 } from './chapter1/levels';
 import { CHAPTER2 } from './chapter2/levels';
+import { CHAPTER3 } from './chapter3/levels';
+import { SANDBOX } from './sandbox';
 import type { Level } from './types';
 
 export const CHAPTERS: { number: number; title: string; levels: Level[] }[] = [
   { number: 1, title: 'Operation Bin Day', levels: CHAPTER1 },
   { number: 2, title: 'The Last Dragon', levels: CHAPTER2 },
+  { number: 3, title: 'Bolt Rebuilds', levels: CHAPTER3 },
 ];
 
 export const ALL_LEVELS: Level[] = CHAPTERS.flatMap((c) => c.levels);
 
 export function getLevel(id: string): Level | undefined {
+  // The Workshop is deliberately outside ALL_LEVELS: it must not affect
+  // unlocking, progress counts or "what comes next".
+  if (id === SANDBOX.id) return SANDBOX;
   return ALL_LEVELS.find((l) => l.id === id);
 }
 

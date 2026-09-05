@@ -15,10 +15,20 @@ const images = new Map<string, HTMLImageElement>();
 let manifest: ArtManifest = {};
 let state: 'idle' | 'loading' | 'ready' = 'idle';
 
-/** The drawable image for a character, or null to fall back to the emoji. */
-export function artFor(character: string): HTMLImageElement | null {
-  const img = images.get(character);
-  return img && img.complete && img.naturalWidth > 0 ? img : null;
+/**
+ * The drawable image for a key, or null to fall back to the emoji.
+ *
+ * Keys are tried in order, so a caller can ask for the specific thing and fall
+ * back to the general one: `artFor('bolt:drill', 'bolt')` uses drill artwork if
+ * it exists and plain Bolt if it does not. That means the cast can be drawn one
+ * piece at a time without anything ever looking half-finished.
+ */
+export function artFor(...keys: string[]): HTMLImageElement | null {
+  for (const key of keys) {
+    const img = images.get(key);
+    if (img && img.complete && img.naturalWidth > 0) return img;
+  }
+  return null;
 }
 
 /**

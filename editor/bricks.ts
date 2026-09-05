@@ -12,7 +12,7 @@
 
 import { hole, newId, type Expr, type Stmt } from '@/lang/types';
 
-export type BrickCategory = 'go' | 'do' | 'control' | 'talk' | 'count';
+export type BrickCategory = 'go' | 'do' | 'control' | 'talk' | 'count' | 'define';
 
 export interface Brick {
   id: string;
@@ -192,6 +192,42 @@ function buildBricks(cast: string[], variable = 'count'): Record<string, Brick> 
       }),
       example: `if swordHere(${hero}) { grab(${hero}) }`,
     },
+    transform: {
+      id: 'transform',
+      label: 'transform',
+      category: 'do',
+      help: 'Change shape. Each shape can do something the others cannot.',
+      make: () => ({
+        kind: 'call',
+        id: newId('c'),
+        name: 'transform',
+        args: [sniff(), hole('mode', 'which shape?')],
+      }),
+      example: `transform(${hero}, drill)`,
+    },
+    'if-wall': {
+      id: 'if-wall',
+      label: 'if wall ahead',
+      category: 'control',
+      help: 'Only do the inside bit when a wall is in the way.',
+      make: () => ({
+        kind: 'if',
+        id: newId('i'),
+        cond: { kind: 'call', name: 'wallAhead', args: [sniff(), hole('direction', 'which way?')] },
+        body: [],
+      }),
+      example: `if wallAhead(${hero}, right) { transform(${hero}, drill) }`,
+    },
+    define: {
+      id: 'define',
+      label: 'teach a move',
+      category: 'define',
+      help: 'Make up your own command. Once you have, it turns into a brick you can tap.',
+      // The name is chosen as it is created, so there is never a nameless
+      // definition sitting on screen.
+      make: () => ({ kind: 'define', id: newId('d'), name: 'sweep', body: [] }),
+      example: 'define sweep { move(bolt, right) }',
+    },
     'if-holding': {
       id: 'if-holding',
       label: 'if holding',
@@ -217,10 +253,34 @@ export const CATEGORY_STYLE: Record<BrickCategory, { name: string; className: st
   control: { name: 'Control', className: 'bg-amber-500 border-amber-800' },
   talk: { name: 'Talk', className: 'bg-fuchsia-500 border-fuchsia-800' },
   count: { name: 'Count', className: 'bg-violet-500 border-violet-800' },
+  define: { name: 'Yours', className: 'bg-rose-500 border-rose-800' },
 };
 
-export function bricksFor(ids: string[], cast: string[] = ['sniff'], variable = 'count'): Brick[] {
+/**
+ * A brick for a command he defined himself.
+ *
+ * This is the whole point of Chapter 3: `define sweep { ... }` and `sweep`
+ * appears in his bar, in its own colour, tappable like anything else. A
+ * function stops being an idea and becomes a button he made.
+ */
+export function userBrick(name: string): Brick {
+  return {
+    id: `user:${name}`,
+    label: name,
+    category: 'define',
+    help: `Your own command. It does whatever you put inside define ${name}.`,
+    make: () => ({ kind: 'call', id: newId('c'), name, args: [] }),
+    example: `${name}()`,
+  };
+}
+
+export function bricksFor(
+  ids: string[],
+  cast: string[] = ['sniff'],
+  variable = 'count',
+  defined: string[] = [],
+): Brick[] {
   const set =
     cast.length === 1 && cast[0] === 'sniff' && variable === 'count' ? BRICKS : buildBricks(cast, variable);
-  return ids.map((id) => set[id]).filter(Boolean);
+  return [...ids.map((id) => set[id]).filter(Boolean), ...defined.map(userBrick)];
 }

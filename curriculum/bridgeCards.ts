@@ -68,6 +68,35 @@ export const BRIDGE_CARDS: Record<string, BridgeCard> = {
       'it just keeps going until the answer to the question is yes. You used it when nobody knew how ' +
       'many swings it would take, which is the whole point of it.',
   },
+  coordinates: {
+    id: 'coordinates',
+    title: 'CLUB CARD: x and y',
+    youWrote: 'move(bolt, down, 2)\nmove(bolt, right, 3)',
+    scratchBlock: 'go to x: (0) y: (0)',
+    body:
+      'Scratch has a block with an x and a y in it, and until now it probably looked like nonsense. ' +
+      'x is how far ACROSS and y is how far UP or DOWN. That is all a coordinate is: two numbers that ' +
+      'find one square.',
+  },
+  nested: {
+    id: 'nested',
+    title: 'CLUB CARD: A loop inside a loop',
+    youWrote: 'repeat 2 {\n  repeat 3 {\n    ...\n  }\n}',
+    scratchBlock: 'a repeat block dropped inside another repeat block',
+    body:
+      'You can put an orange repeat INSIDE another orange repeat, and Scratch will let you. Two rows of ' +
+      'three is six. Most people at coding club have never tried it, because it looks harder than it is.',
+  },
+  myblocks: {
+    id: 'myblocks',
+    title: 'CLUB CARD: My Blocks',
+    youWrote: 'define sweep {\n  ...\n}\nsweep()',
+    scratchBlock: 'My Blocks → Make a Block',
+    body:
+      'At the bottom of the Scratch menu there is a pink section called My Blocks, and it does exactly ' +
+      'what you just did: you make a block, give it a name, and it appears in the list with all the ' +
+      'others. You have made your own command. That is the actual job.',
+  },
   conditionals: {
     id: 'conditionals',
     title: 'CLUB CARD: The gold if-then',

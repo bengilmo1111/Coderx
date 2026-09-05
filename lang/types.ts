@@ -7,7 +7,7 @@
  * because there is no text to get wrong.
  */
 
-export type SlotKind = 'number' | 'character' | 'direction' | 'text' | 'condition';
+export type SlotKind = 'number' | 'character' | 'direction' | 'text' | 'condition' | 'mode' | 'name';
 
 /** A gap in the code Henry hasn't filled in yet. Renders as a tappable box. */
 export interface Hole {
@@ -37,7 +37,14 @@ export type Stmt =
   /** `repeatUntil dragonBeaten() { ... }` — a real while loop. */
   | { kind: 'until'; id: string; cond: Expr; body: Stmt[] }
   /** `set swords = 0`, `set swords = swords + 1`. */
-  | { kind: 'set'; id: string; name: string; value: Expr };
+  | { kind: 'set'; id: string; name: string; value: Expr }
+  /**
+   * `define sweep { ... }` — a command he made himself.
+   *
+   * The point of the whole chapter: once defined, the name appears in his brick
+   * bar as a button he can tap, which is what a function actually is.
+   */
+  | { kind: 'define'; id: string; name: string; body: Stmt[] };
 
 export type Program = Stmt[];
 

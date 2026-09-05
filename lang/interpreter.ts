@@ -23,6 +23,26 @@ export interface RunOptions {
 /** Variables live here. One flat scope: he has quite enough to think about. */
 type Env = Map<string, number>;
 
+/** Commands he defined himself, by name. */
+type Defs = Map<string, Stmt[]>;
+
+/** Deep enough for anything he will write on purpose, shallow enough to catch a
+ *  command that calls itself before the step budget does. */
+const MAX_DEPTH = 25;
+
+/** Definitions are hoisted, so a command works wherever he wrote it. */
+function collectDefs(stmts: Stmt[], into: Defs): Defs {
+  for (const s of stmts) {
+    if (s.kind === 'define') {
+      into.set(s.name, s.body);
+      collectDefs(s.body, into);
+    } else if (s.kind === 'repeat' || s.kind === 'if' || s.kind === 'until') {
+      collectDefs(s.body, into);
+    }
+  }
+  return into;
+}
+
 function evalExpr(e: Expr, host: Host, env: Env, stmtId: string): Value {
   switch (e.kind) {
     case 'num':
@@ -85,7 +105,9 @@ export function* execute(
 ): Generator<Step, number, void> {
   const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
   const env: Env = new Map();
+  const defs = collectDefs(program, new Map());
   let count = 0;
+  let depth = 0;
 
   function* runBlock(stmts: Stmt[]): Generator<Step, void, void> {
     for (const s of stmts) {
@@ -94,11 +116,29 @@ export function* execute(
 
       switch (s.kind) {
         case 'call': {
+          // His own commands win over the built-in ones, so defining `sweep`
+          // gives him a real new word rather than a shadow of an old one.
+          const body = defs.get(s.name);
+          if (body) {
+            yield { stmtId: s.id, count, vars: env };
+            if (depth >= MAX_DEPTH) throw errors.tooDeep(s.name, s.id);
+            depth += 1;
+            try {
+              yield* runBlock(body);
+            } finally {
+              depth -= 1;
+            }
+            break;
+          }
           const args = s.args.map((a) => evalExpr(a, host, env, s.id));
           host.runCommand(s.name, args);
           yield { stmtId: s.id, count, vars: env };
           break;
         }
+        case 'define':
+          // Already collected. Defining is not doing.
+          yield { stmtId: s.id, count, vars: env };
+          break;
         case 'set': {
           env.set(s.name, asNumber(evalExpr(s.value, host, env, s.id), s.id));
           yield { stmtId: s.id, count, vars: env };

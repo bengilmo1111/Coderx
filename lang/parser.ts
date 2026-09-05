@@ -4,7 +4,8 @@
  *
  * Grammar:
  *   program   := stmt*
- *   stmt      := repeat | repeatUntil | if | set | call
+ *   stmt      := repeat | repeatUntil | if | set | define | call
+ *   define    := 'define' name '{' stmt* '}'
  *   repeat    := 'repeat' expr '{' stmt* '}'
  *   until     := 'repeatUntil' expr '{' stmt* '}'
  *   if        := 'if' expr '{' stmt* '}'
@@ -78,6 +79,13 @@ class Parser {
       this.next();
       const cond = this.parseExpr();
       return { kind: 'if', id: newId('i'), cond, body: this.parseBlock() };
+    }
+
+    if (t.type === 'name' && t.value === 'define') {
+      this.next();
+      const name = this.next();
+      if (name.type !== 'name') throw errors.cannotRead(name.value || 'nothing', name.line);
+      return { kind: 'define', id: newId('d'), name: name.value, body: this.parseBlock() };
     }
 
     if (t.type === 'name' && t.value === 'set') {

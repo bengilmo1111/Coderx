@@ -10,12 +10,14 @@ import type { Host, Value } from '@/lang/types';
 import {
   CHARACTERS,
   DELTAS,
+  MODES,
   cloneWorld,
   isDirection,
   itemAt,
   itemById,
   tileAt,
   type Effect,
+  type Mode,
   type Frame,
   type WorldState,
 } from './world';
@@ -37,6 +39,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'bark', minArgs: 1, maxArgs: 1, help: 'BARK. Loudly. For no reason.' },
   { name: 'wait', minArgs: 1, maxArgs: 1, help: 'Do nothing. Dramatically.' },
   { name: 'attack', minArgs: 1, maxArgs: 1, help: 'Swing whatever you are holding at the dragon.' },
+  { name: 'transform', minArgs: 2, maxArgs: 2, help: 'Change shape. Each shape can do something the others cannot.' },
 ];
 
 export const CONDITIONS: CommandSpec[] = [
@@ -46,6 +49,7 @@ export const CONDITIONS: CommandSpec[] = [
   { name: 'hasSword', minArgs: 1, maxArgs: 1, help: 'Are they holding a sword?' },
   { name: 'swordHere', minArgs: 1, maxArgs: 1, help: 'Is there a sword under their feet?' },
   { name: 'dragonBeaten', minArgs: 0, maxArgs: 0, help: 'Has the dragon had enough?' },
+  { name: 'wallAhead', minArgs: 2, maxArgs: 2, help: 'Is there a wall that way?' },
 ];
 
 /**
@@ -118,6 +122,8 @@ export class WorldHost implements Host {
         return;
       case 'attack':
         return this.attack(args[0]);
+      case 'transform':
+        return this.transform(args[0], args[1]);
     }
   }
 
@@ -144,11 +150,29 @@ export class WorldHost implements Host {
       const nx = s.x + dx;
       const ny = s.y + dy;
       const tile = tileAt(this.world, nx, ny);
+      const who = this.label(args[0]);
+
       if (tile === null || tile === 'fence') {
-        throw new CoderXError(`${this.label(args[0])} bonked straight into the fence. Ouch.`, {
+        throw new CoderXError(`${who} bonked straight into the fence. Ouch.`, {
           tryThis: 'Count the squares again — how many are actually there?',
         });
       }
+      if (tile === 'wall') {
+        if (s.mode !== 'drill') {
+          throw new CoderXError(`A solid wall. ${who} is not going through that as a robot.`, {
+            tryThis: 'Transform into the drill first, then go straight through it.',
+          });
+        }
+        // A drill does not go round a wall. It goes through it, and it stays gone.
+        this.world.tiles[ny][nx] = 'path';
+        this.pending.push({ kind: 'pow', who: String(args[0]), text: 'KRUNCH!' });
+      }
+      if (tile === 'gap' && s.mode !== 'jet') {
+        throw new CoderXError(`That is a hole in the floor. ${who} nearly went down it.`, {
+          tryThis: 'Transform into the jet and fly over.',
+        });
+      }
+
       s.x = nx;
       s.y = ny;
       // A carried item travels with its carrier.
@@ -167,12 +191,22 @@ export class WorldHost implements Host {
         tryThis: 'Drop what they are carrying first, then grab.',
       });
     }
-    const item = itemAt(this.world, s.x, s.y);
+    // A magnet reaches one square in every direction; everyone else has to be
+    // standing on the thing.
+    const reach = s.mode === 'magnet' ? 1 : 0;
+    const item = this.world.items.find(
+      (i) => Math.abs(i.x - s.x) <= reach && Math.abs(i.y - s.y) <= reach && i.id !== s.carrying,
+    );
     if (!item) {
       throw new CoderXError(`There's nothing to grab here. ${this.label(who)} just grabbed some air.`, {
-        tryThis: 'Move onto a square that actually has something on it.',
+        tryThis:
+          s.mode === 'magnet'
+            ? 'Even a magnet only reaches one square. Get closer.'
+            : 'Move onto the square with the thing on it — or become the magnet and reach.',
       });
     }
+    item.x = s.x;
+    item.y = s.y;
     s.carrying = item.id;
     this.pending.push({ kind: 'sparkle', who: String(who) });
   }
@@ -201,6 +235,23 @@ export class WorldHost implements Host {
   /** Something of this kind on their square that they are not already holding. */
   private loose(s: { x: number; y: number; carrying: string | null }, kind: 'rubbish' | 'sword') {
     return this.world.items.some((i) => i.x === s.x && i.y === s.y && i.kind === kind && i.id !== s.carrying);
+  }
+
+  private transform(who: Value, mode: Value): void {
+    const s = this.sprite(who);
+    const next = String(mode);
+    if (!(next in MODES)) {
+      throw new CoderXError(`"${next}" is not a shape ${this.label(who)} knows how to be.`, {
+        tryThis: `Try ${Object.keys(MODES).join(', ')}.`,
+      });
+    }
+    if (s.mode === undefined) {
+      throw new CoderXError(`${this.label(who)} cannot transform. Not everyone is a robot.`, {
+        tryThis: 'Only Bolt can change shape.',
+      });
+    }
+    s.mode = next as Mode;
+    this.pending.push({ kind: 'sparkle', who: String(who) });
   }
 
   private dragon() {
@@ -259,6 +310,12 @@ export class WorldHost implements Host {
         return tileAt(this.world, s.x, s.y) === 'bin';
       case 'hasSword':
         return itemById(this.world, s.carrying)?.kind === 'sword';
+      case 'wallAhead': {
+        const dir = args[1];
+        if (!isDirection(dir)) return false;
+        const { dx, dy } = DELTAS[dir];
+        return tileAt(this.world, s.x + dx, s.y + dy) === 'wall';
+      }
       default:
         return false;
     }

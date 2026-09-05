@@ -20,7 +20,7 @@ export interface Selection {
 }
 
 const isBlock = (s: Stmt): s is Extract<Stmt, { body: Stmt[] }> =>
-  s.kind === 'repeat' || s.kind === 'if' || s.kind === 'until';
+  s.kind === 'repeat' || s.kind === 'if' || s.kind === 'until' || s.kind === 'define';
 
 const withBody = (s: Stmt, body: Stmt[]): Stmt => (isBlock(s) ? { ...s, body } : s);
 
@@ -229,6 +229,11 @@ export function firstHole(program: Program): { stmtId: string; index: ArgIndex }
       if (s.value.kind === 'hole') return { stmtId: s.id, index: 'value' };
       continue;
     }
+    if (s.kind === 'define') {
+      const inner = firstHole(s.body);
+      if (inner) return inner;
+      continue;
+    }
     const slot = s.kind === 'repeat' ? s.count : s.cond;
     if (slot.kind === 'hole') return { stmtId: s.id, index: s.kind === 'repeat' ? 'count' : 'cond' };
     const inner = firstHole(s.body);
@@ -248,4 +253,17 @@ export function missingRequirement(
   requires: { kind: Stmt['kind']; message: string }[] | undefined,
 ): string | null {
   return requires?.find((r) => !usesKind(program, r.kind))?.message ?? null;
+}
+
+/** Every command he has defined, in the order he defined them. */
+export function definedNames(program: Program): string[] {
+  const names: string[] = [];
+  const walk = (stmts: Stmt[]) => {
+    for (const s of stmts) {
+      if (s.kind === 'define') names.push(s.name);
+      if (isBlock(s)) walk(s.body);
+    }
+  };
+  walk(program);
+  return [...new Set(names)];
 }

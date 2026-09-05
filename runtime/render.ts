@@ -7,7 +7,7 @@
  */
 
 import { artFor } from './art';
-import { CHARACTERS, type Effect, type Frame, type WorldState } from './world';
+import { CHARACTERS, MODES, type Effect, type Frame, type WorldState } from './world';
 
 const INK = '#12100e';
 
@@ -33,15 +33,24 @@ export interface Layout {
   cell: number;
   ox: number;
   oy: number;
+  /** Whether to label the columns and rows. */
+  axes: boolean;
 }
 
 export function layoutFor(world: WorldState, width: number, height: number): Layout {
+  // Grids get column and row numbers down the edges, so they need room for them.
+  // A one-row street does not — there is nothing to find your way around.
+  const axes = world.h > 1;
   const pad = 14;
-  const cell = Math.floor(Math.min((width - pad * 2) / world.w, (height - pad * 2) / world.h));
+  const gutter = axes ? 20 : 0;
+  const cell = Math.floor(
+    Math.min((width - pad * 2 - gutter) / world.w, (height - pad * 2 - gutter) / world.h),
+  );
   return {
     cell,
-    ox: Math.floor((width - cell * world.w) / 2),
-    oy: Math.floor((height - cell * world.h) / 2),
+    ox: Math.floor((width - cell * world.w + gutter) / 2),
+    oy: Math.floor((height - cell * world.h + gutter) / 2),
+    axes,
   };
 }
 
@@ -77,7 +86,17 @@ function drawTiles(ctx: CanvasRenderingContext2D, world: WorldState, L: Layout) 
       const tile = world.tiles[y][x];
 
       const fill =
-        tile === 'grass' ? '#8fd67a' : tile === 'path' ? '#e8e2d4' : tile === 'bin' ? '#4b5f7a' : '#7a6a55';
+        tile === 'grass'
+          ? '#8fd67a'
+          : tile === 'path'
+            ? '#e8e2d4'
+            : tile === 'bin'
+              ? '#4b5f7a'
+              : tile === 'wall'
+                ? '#b08968'
+                : tile === 'gap'
+                  ? '#2b2b33'
+                  : '#7a6a55';
       ctx.fillStyle = fill;
       ctx.fillRect(px, py, L.cell, L.cell);
 
@@ -103,6 +122,39 @@ function drawTiles(ctx: CanvasRenderingContext2D, world: WorldState, L: Layout) 
         ctx.stroke();
       }
 
+      if (tile === 'wall') {
+        // Brickwork, so "you cannot walk through that" needs no explaining.
+        ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+        ctx.lineWidth = 1.5;
+        const courses = 3;
+        for (let c = 1; c < courses; c += 1) {
+          const ly = py + (L.cell / courses) * c;
+          ctx.beginPath();
+          ctx.moveTo(px, ly);
+          ctx.lineTo(px + L.cell, ly);
+          ctx.stroke();
+        }
+        for (let c = 0; c < courses; c += 1) {
+          const lx = px + (c % 2 ? L.cell / 2 : L.cell);
+          ctx.beginPath();
+          ctx.moveTo(lx, py + (L.cell / courses) * c);
+          ctx.lineTo(lx, py + (L.cell / courses) * (c + 1));
+          ctx.stroke();
+        }
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(px + 1, py + 1, L.cell - 2, L.cell - 2);
+      }
+
+      if (tile === 'gap') {
+        // A hole, drawn as a hole: dark, with a lip so it reads as depth.
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect(px, py, L.cell, L.cell * 0.12);
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(px + 1, py + 1, L.cell - 2, L.cell - 2);
+      }
+
       if (tile === 'fence') {
         ctx.fillStyle = '#5c4c39';
         ctx.fillRect(px + L.cell * 0.15, py + L.cell * 0.1, L.cell * 0.7, L.cell * 0.8);
@@ -117,6 +169,32 @@ function drawTiles(ctx: CanvasRenderingContext2D, world: WorldState, L: Layout) 
   ctx.strokeStyle = INK;
   ctx.lineWidth = Math.max(3, L.cell * 0.08);
   ctx.strokeRect(L.ox, L.oy, L.cell * world.w, L.cell * world.h);
+
+  if (L.axes) drawAxes(ctx, world, L);
+}
+
+/**
+ * Column and row numbers down the edges.
+ *
+ * This is how coordinates get taught: no new command, just numbers he can read
+ * and count. "The cog is at column 4, row 2" is then something he can check
+ * against the picture, which is exactly the Year 4-5 skill.
+ */
+function drawAxes(ctx: CanvasRenderingContext2D, world: WorldState, L: Layout) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.font = `800 ${Math.max(9, Math.min(13, L.cell * 0.26))}px ui-rounded, "Trebuchet MS", system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let x = 0; x < world.w; x += 1) {
+    ctx.fillText(String(x), L.ox + x * L.cell + L.cell / 2, L.oy - 10);
+  }
+  ctx.textAlign = 'right';
+  for (let y = 0; y < world.h; y += 1) {
+    ctx.fillText(String(y), L.ox - 7, L.oy + y * L.cell + L.cell / 2);
+  }
+  ctx.restore();
 }
 
 function glyph(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: number, size: number) {
@@ -253,8 +331,14 @@ export function drawScene(
     // bin, and drawn centred it looked like it was already in the bin — which
     // is the opposite of the thing you are being asked to fix.
     const lift = carried ? -L.cell * 0.42 : -L.cell * 0.22;
-    const face = r.kind === 'sword' ? '🗡️' : litterGlyph(r.id);
-    glyph(ctx, face, cx, cy + lift, L.cell * (carried ? 0.36 : 0.44));
+    const size = L.cell * (carried ? 0.36 : 0.44);
+    const itemArt = artFor(`item:${r.kind}`);
+    if (itemArt) {
+      ctx.drawImage(itemArt, cx - size / 2, cy + lift - size / 2, size, size);
+    } else {
+      const face = r.kind === 'sword' ? '🗡️' : r.kind === 'part' ? '⚙️' : litterGlyph(r.id);
+      glyph(ctx, face, cx, cy + lift, size);
+    }
   }
 
   // Characters.
@@ -274,8 +358,9 @@ export function drawScene(
     ctx.fill();
     ctx.restore();
 
-    // Artwork if it has been dropped into /public/cast, emoji otherwise.
-    const art = artFor(s.character);
+    // Artwork if it has been dropped into /public/cast, emoji otherwise. A
+    // transforming robot can have a picture per mode.
+    const art = s.mode && s.mode !== 'robot' ? artFor(`${s.character}:${s.mode}`, s.character) : artFor(s.character);
     const size = L.cell * 0.62;
     if (art) {
       ctx.drawImage(art, cx - size / 2, cy - bob - size / 2, size, size);
@@ -284,6 +369,10 @@ export function drawScene(
     }
 
     if (s.maxHealth) healthBar(ctx, cx, cy - size * 0.72, L.cell, s.health ?? 0, s.maxHealth);
+    // What shape he is currently in, on him, so it is never a mystery.
+    if (s.mode && s.mode !== 'robot') {
+      glyph(ctx, MODES[s.mode].glyph, cx + size * 0.36, cy - size * 0.36, L.cell * 0.3);
+    }
   }
 
   // Effects belong to the frame they were produced in.

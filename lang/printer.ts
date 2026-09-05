@@ -101,6 +101,43 @@ export function printProgram(program: Program): CodeLine[] {
         continue;
       }
 
+      if (s.kind === 'define') {
+        lines.push({
+          stmtId: s.id,
+          indent,
+          line: n,
+          isCloser: false,
+          isSlot: false,
+          segments: [
+            { kind: 'keyword', text: 'define' },
+            { kind: 'punct', text: ' ' },
+            { kind: 'command', text: s.name },
+            { kind: 'punct', text: ' {' },
+          ],
+        });
+        if (s.body.length === 0) {
+          lines.push({
+            stmtId: s.id,
+            indent: indent + 1,
+            line: n,
+            isCloser: false,
+            isSlot: true,
+            segments: [{ kind: 'punct', text: 'tap a brick to put it in here' }],
+          });
+        }
+        walk(s.body, indent + 1);
+        n += 1;
+        lines.push({
+          stmtId: s.id,
+          indent,
+          line: n,
+          isCloser: true,
+          isSlot: false,
+          segments: [{ kind: 'punct', text: '}' }],
+        });
+        continue;
+      }
+
       const keyword = s.kind === 'repeat' ? 'repeat' : s.kind === 'until' ? 'repeatUntil' : 'if';
       const slot = s.kind === 'repeat' ? s.count : s.cond;
       const path: ArgPath = { stmtId: s.id, index: s.kind === 'repeat' ? 'count' : 'cond' };

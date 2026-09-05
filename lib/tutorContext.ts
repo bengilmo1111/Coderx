@@ -30,6 +30,7 @@ export function describeWorld(world: WorldState, commandable: string[] = ['sniff
   const bins = cols((x, y) => world.tiles[y][x] === 'bin');
   const rubbish = world.items.filter((i) => i.kind === 'rubbish').map((i) => String(i.x)).join(', ') || 'none';
   const swords = world.items.filter((i) => i.kind === 'sword').map((i) => String(i.x)).join(', ');
+  const parts = world.items.filter((i) => i.kind === 'part').map((i) => `(${i.x},${i.y})`).join(', ');
   const heroes = Object.entries(world.sprites).filter(([name]) => commandable.includes(name));
   const bystanders = Object.entries(world.sprites).filter(([name]) => !commandable.includes(name));
 
@@ -41,12 +42,36 @@ export function describeWorld(world: WorldState, commandable: string[] = ['sniff
           .join(', ')}. Never tell him to command them.`
       : '');
 
+  const grid = world.h > 1;
+  const at = (predicate: (t: string) => boolean) => {
+    const found: string[] = [];
+    for (let y = 0; y < world.h; y += 1)
+      for (let x = 0; x < world.w; x += 1) if (predicate(world.tiles[y][x])) found.push(`(${x},${y})`);
+    return found.join(', ');
+  };
+  const walls = at((t) => t === 'wall');
+  const gaps = at((t) => t === 'gap');
+  const modes = Object.entries(world.sprites)
+    .filter(([, sp]) => sp.mode)
+    .map(([n, sp]) => `${n} is currently in ${sp.mode} mode`)
+    .join('; ');
+
   return [
-    `The board is ${world.w} squares wide. Columns are numbered from 0 at the far left to ${world.w - 1} at the right.`,
-    `${who} Everything happens along one row, so only left and right matter.`,
+    grid
+      ? `The board is a grid ${world.w} columns wide and ${world.h} rows tall. Squares are (column,row), ` +
+        `both counting from 0 at the top left. All four directions matter: up, down, left and right.`
+      : `The board is ${world.w} squares wide. Columns are numbered from 0 at the far left to ${world.w - 1} at the right.` +
+        ' Everything happens along one row, so only left and right matter.',
+    who,
     `Bins are at column(s): ${bins}. Rubbish is at column(s): ${rubbish}.`,
     ...(swords ? [`Swords are at column(s): ${swords}.`] : []),
-    'Walking past column ' + (world.w - 1) + ' or before column 0 hits the fence.',
+    ...(parts ? [`Robot parts at: ${parts}.`] : []),
+    ...(walls ? [`Walls (need drill mode) at: ${walls}.`] : []),
+    ...(gaps ? [`Holes in the floor (need jet mode) at: ${gaps}.`] : []),
+    ...(modes ? [`${modes}.`] : []),
+    grid
+      ? 'Going off any edge of the grid hits the fence.'
+      : `Walking past column ${world.w - 1} or before column 0 hits the fence.`,
   ].join(' ');
 }
 

@@ -7,12 +7,12 @@ import { CodeList } from '@/editor/CodeList';
 import { BrickBar } from '@/editor/BrickBar';
 import { HolePicker } from '@/editor/HolePicker';
 import { BRICKS, bricksFor, type Brick } from '@/editor/bricks';
-import { countStmts, findStmt, firstHole, getArg, insertStmt, missingRequirement, moveStmt, removeStmt, setArg, wrapStmt, type ArgIndex, type Selection } from '@/editor/program';
+import { countStmts, definedNames, findStmt, firstHole, getArg, insertStmt, missingRequirement, moveStmt, removeStmt, setArg, wrapStmt, type ArgIndex, type Selection } from '@/editor/program';
 
 import { parse } from '@/lang/parser';
 import { printSource } from '@/lang/printer';
 import { CoderXError } from '@/lang/errors';
-import type { Expr, Program, SlotKind } from '@/lang/types';
+import type { Expr, Program, SlotKind, Stmt } from '@/lang/types';
 
 import { runProgram, type RunResult } from '@/runtime/run';
 import { Stage } from '@/components/Stage';
@@ -29,6 +29,7 @@ import { awardsFor, rankFor, type Award } from '@/progress/xp';
 import { addMinutes, collect, collectCard, levelProgress, recordSkillAttempt, setLevelProgress } from '@/progress/store';
 
 const DIRECTIONS = ['up', 'down', 'left', 'right'];
+const MODE_NAMES = ['robot', 'drill', 'jet', 'magnet'];
 
 /**
  * Which picker belongs to this slot.
@@ -44,7 +45,11 @@ function slotFor(program: Program, stmtId: string, index: ArgIndex): SlotKind {
   if (index === 'cond') return 'condition';
   if (arg?.kind === 'str') return 'text';
   if (arg?.kind === 'num') return 'number';
-  if (arg?.kind === 'ident') return DIRECTIONS.includes(arg.name) ? 'direction' : 'character';
+  if (arg?.kind === 'ident') {
+    if (DIRECTIONS.includes(arg.name)) return 'direction';
+    if (MODE_NAMES.includes(arg.name)) return 'mode';
+    return 'character';
+  }
   return 'number';
 }
 
@@ -60,6 +65,8 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   const [showBrief, setShowBrief] = useState(true);
   const [showBolt, setShowBolt] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [naming, setNaming] = useState(false);
+  const [enlarged, setEnlarged] = useState(false);
   const [typedDraft, setTypedDraft] = useState('');
   const [typedLines, setTypedLines] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
@@ -71,6 +78,8 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   const settled = useRef(false);
   const world = useMemo(() => level.makeWorld(), [level]);
   const cast = useMemo(() => level.commandable ?? ['sniff'], [level]);
+  /** Commands he has defined in this program — each becomes a brick of its own. */
+  const defined = useMemo(() => definedNames(program), [program]);
 
   useEffect(() => setMutedState(loadMutePreference()), []);
 
@@ -108,6 +117,12 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   };
 
   const tapBrick = (brick: Brick) => {
+    // Naming happens as the command is created, so there is never a nameless
+    // definition sitting on screen waiting to be filled in.
+    if (brick.id === 'define') {
+      setNaming(true);
+      return;
+    }
     const stmt = brick.make();
 
     // Tapping repeat or if with a line selected WRAPS that line, because that
@@ -129,6 +144,14 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     const slot = slotFor(program, stmtId, index);
     if (slot === 'condition') return; // conditions arrive whole, from the brick
     setPicker({ stmtId, index, slot });
+  };
+
+  const nameNewCommand = (value: Expr) => {
+    setNaming(false);
+    if (value.kind !== 'str' || !value.value) return;
+    const stmt: Stmt = { kind: 'define', id: `d${Date.now()}`, name: value.value, body: [] };
+    setProgram(insertStmt(program, selection, stmt));
+    setSelection({ stmtId: stmt.id, closer: false });
   };
 
   const fillHole = (value: Expr) => {
@@ -198,6 +221,15 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   // what happened before he is told about it.
   useEffect(() => {
     if (!runResult || !playback.done || settled.current || !ready) return;
+    // Free play has nothing to win, so nothing to score either.
+    if (level.sandbox) {
+      settled.current = true;
+      if (runResult.error) {
+        sfx.oops();
+        setBanner(runResult.error);
+      }
+      return;
+    }
     settled.current = true;
 
     const size = countStmts(program);
@@ -292,7 +324,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
         </Link>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[11px] font-black uppercase tracking-wide opacity-50">
-            Chapter {level.chapter} · Page {level.index}
+            {level.sandbox ? 'Free play' : `Chapter ${level.chapter} · Page ${level.index}`}
           </p>
           <h1 className="truncate text-base font-black leading-tight">{level.title}</h1>
         </div>
@@ -317,10 +349,25 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Stage */}
         <section className="flex min-h-0 shrink-0 flex-col gap-2 p-2 lg:flex-1">
-          <div className="relative h-[18dvh] min-h-24 lg:h-auto lg:max-h-[34dvh] lg:flex-1">
+          {/* A grid needs more height than a one-row street, but not so much
+              that it takes back the code space we fought for. It gets a modest
+              share inline, and tapping it opens a proper look. */}
+          <button
+            type="button"
+            data-testid="stage-box"
+            onClick={() => setEnlarged(true)}
+            title="Tap for a bigger look"
+            className={`relative block w-full ${
+              world.h > 1 ? 'h-[24dvh] min-h-36' : 'h-[18dvh] min-h-24'
+            } lg:h-auto lg:max-h-[42dvh] lg:flex-1`}
+          >
             <Stage world={world} frames={runResult?.frames ?? []} index={playback.index} t={playback.t} />
-
-          </div>
+            {world.h > 1 && (
+              <span className="pointer-events-none absolute bottom-1 right-1 rounded-md border-2 border-ink bg-white/85 px-1.5 text-[10px] font-black opacity-70">
+                tap to zoom
+              </span>
+            )}
+          </button>
 
           {/* While something has gone wrong, Bolt says so HERE, in place of the
               goal. Two earlier versions were both wrong: a block of its own
@@ -436,7 +483,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
                   fair — nothing told him what a line is meant to look like.
                   Tapping one drops the real thing in the box to edit. */}
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {bricksFor(level.bricks, cast, level.variable)
+                {bricksFor(level.bricks, cast, level.variable, defined)
                   .filter((b) => b.example.toLowerCase().startsWith(typedDraft.trim().toLowerCase()))
                   .map((b) => (
                     <button
@@ -466,9 +513,33 @@ export function PlayScreen({ levelId }: { levelId: string }) {
             />
           </div>
 
-          <BrickBar brickIds={level.bricks} cast={cast} variable={level.variable} onTap={tapBrick} onShowHelp={(b) => setBanner(new CoderXError(BRICKS[b.id].help))} />
+          <BrickBar brickIds={level.bricks} cast={cast} variable={level.variable} defined={defined} onTap={tapBrick} onShowHelp={(b) => setBanner(new CoderXError(BRICKS[b.id].help))} />
         </section>
       </div>
+
+      {enlarged && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-black/70 p-3"
+          onClick={() => setEnlarged(false)}
+        >
+          <div className="min-h-0 flex-1" onClick={(e) => e.stopPropagation()}>
+            <Stage world={world} frames={runResult?.frames ?? []} index={playback.index} t={playback.t} />
+          </div>
+          <button type="button" onClick={() => setEnlarged(false)} className="chunk mt-3 bg-white py-3 text-lg">
+            Back to the code
+          </button>
+        </div>
+      )}
+
+      {naming && (
+        <HolePicker
+          slot="name"
+          current={null}
+          characters={cast}
+          onPick={nameNewCommand}
+          onClose={() => setNaming(false)}
+        />
+      )}
 
       {picker && (
         <HolePicker

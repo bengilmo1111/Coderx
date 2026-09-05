@@ -378,3 +378,117 @@ test('a level that is about a variable says so when you skip it', async ({ page 
   await expect(page.getByText(/about a particular trick/)).toBeVisible({ timeout: 25_000 });
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toHaveCount(0);
 });
+
+/** Everything before Chapter 3, so grid levels are reachable. */
+async function unlockChapters(page: Page, upTo: string) {
+  const all = [
+    'c1l1','c1l2','c1l3','c1l4','c1l5','c1l6',
+    'c2l1','c2l2','c2l3','c2l4','c2l5','c2l6',
+    'c3l1','c3l2','c3l3','c3l4','c3l5','c3l6',
+  ];
+  const done = all.slice(0, all.indexOf(upTo));
+  await page.addInitScript((ids: string[]) => {
+    window.localStorage.setItem(
+      'coderx.progress.v1',
+      JSON.stringify({
+        version: 1, agentName: 'Turbo', hqName: 'The Shed', xp: 900,
+        levels: Object.fromEntries(ids.map((id) => [id, { completed: true }])),
+        stickers: [], clubCards: [],
+        streak: { lastDay: null, count: 0, best: 0, freezes: 2 },
+        mastery: {}, sessions: {}, typedLines: 0, createdAt: new Date().toISOString(),
+      }),
+    );
+  }, done);
+}
+
+/**
+ * Chapter 3 moves off the single street onto a grid, which is the only shape
+ * that can teach coordinates — and it needs up and down to work by tapping.
+ */
+test('a grid level can be finished by tapping, going down as well as across', async ({ page }) => {
+  await unlockChapters(page, 'c3l1');
+  await page.goto('/play/c3l1');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  await page.getByRole('button', { name: 'move far', exact: true }).click();
+  await picker(page).getByRole('button', { name: '⬇︎' }).click();
+  await pickNumber(page, 2);
+
+  await page.getByRole('button', { name: 'move far', exact: true }).click();
+  await picker(page).getByRole('button', { name: '➡︎' }).click();
+  await pickNumber(page, 3);
+
+  await page.getByRole('button', { name: 'grab', exact: true }).click();
+
+  await expect(page.getByRole('list').first()).toContainText('move(bolt, down, 2)');
+  await page.getByRole('button', { name: /Run it/ }).click();
+  await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
+});
+
+/**
+ * The headline of the chapter: a command he writes becomes a brick he can tap.
+ * Henry used the word "function" unprompted after run 1 — this is that idea
+ * turned into a button.
+ */
+test('defining a command puts a new brick in his bar', async ({ page }) => {
+  await unlockChapters(page, 'c3l5');
+  await page.goto('/play/c3l5');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  // No such brick before he invents it.
+  await expect(page.getByRole('button', { name: 'tidy', exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'teach a move', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'What shall we call it?' })).toBeVisible();
+  await picker(page).getByRole('button', { name: 'tidy', exact: true }).click();
+  await picker(page).getByRole('button', { name: 'Teach it' }).click();
+
+  await expect(page.getByRole('list').first()).toContainText('define tidy {');
+
+  // And now it exists, in the bar, tappable like anything else.
+  const brick = page.getByTestId('brick-scroller').getByRole('button', { name: 'tidy', exact: true });
+  for (let i = 0; i < 8 && !(await brickIsInView(page, 'tidy')); i += 1) {
+    await page.getByRole('button', { name: 'More bricks' }).last().click();
+    await page.waitForTimeout(200);
+  }
+  await expect(brick).toBeVisible();
+
+  // Put something in the definition, then call it.
+  await page.getByRole('listitem').filter({ hasText: 'define tidy' }).first().click();
+  await page.getByRole('button', { name: 'grab', exact: true }).click();
+  await page.getByRole('listitem').filter({ hasText: /^\d+\}$/ }).first().click();
+  await brick.click();
+  await expect(page.getByRole('list').first()).toContainText('tidy()');
+});
+
+/**
+ * The regression this chapter most threatens: a grid needs vertical space, and
+ * his code area was only just rescued from 40px.
+ */
+test('a grid level still leaves room for the code on a real phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 660 });
+  await unlockChapters(page, 'c3l4');
+  await page.goto('/play/c3l4');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  const box = await page.getByTestId('code-scroll').boundingBox();
+  expect(box!.height).toBeGreaterThan(150);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(660);
+  await page.screenshot({ path: 'screenshots/c3-grid-phone.png' });
+});
+
+test('the workshop is open, with nothing to get wrong', async ({ page }) => {
+  await unlockChapters(page, 'c3l1');
+  await page.goto('/sandbox');
+  await page.getByRole('button', { name: 'On it' }).click();
+  // 'Free play' is both the header and the goal line, so pin it to the header.
+  await expect(page.getByText('Free play', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'bark', exact: true }).click();
+  // The character buttons carry their emoji too, so the name is not exact.
+  await picker(page).getByRole('button', { name: /sniff/ }).click();
+  await page.getByRole('button', { name: /Run it/ }).click();
+  // No win screen, because there is nothing to win.
+  await page.waitForTimeout(2000);
+  await expect(page.getByRole('heading', { name: 'Nailed it!' })).toHaveCount(0);
+});

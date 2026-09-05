@@ -55,6 +55,12 @@ export const errors = {
       tryThis: 'Try a number bigger than 0.',
     }),
 
+  tooDeep: (name: string, stmtId?: string) =>
+    new CoderXError(`"${name}" keeps calling itself, and I have run out of hands.`, {
+      stmtId,
+      tryThis: 'A command cannot use itself forever. Take the call to it out of its own middle.',
+    }),
+
   tooManySteps: (max: number) =>
     new CoderXError(
       `Whoa. I did ${max.toLocaleString('en-NZ')} things and I'm still going. I think we're stuck in a loop forever!`,

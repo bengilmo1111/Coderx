@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Expr, SlotKind } from '@/lang/types';
-import { CHARACTERS, type CharacterKey } from '@/runtime/world';
+import { CHARACTERS, MODES, type CharacterKey, type Mode } from '@/runtime/world';
 import { sfx } from '@/lib/sound';
 
 /**
@@ -60,6 +60,8 @@ export function HolePicker({
         {slot === 'direction' && <DirectionPad onPick={choose} />}
         {slot === 'character' && <CharacterPad characters={characters} onPick={choose} />}
         {slot === 'text' && <WordBank current={current} onPick={choose} />}
+        {slot === 'mode' && <ModePad onPick={choose} />}
+        {slot === 'name' && <NamePad current={current} onPick={choose} />}
       </div>
     </div>
   );
@@ -71,7 +73,12 @@ const TITLES: Record<SlotKind, string> = {
   character: 'Who?',
   text: 'What do they say?',
   condition: 'When?',
+  mode: 'Which shape?',
+  name: 'What shall we call it?',
 };
+
+/** Names for a command he is inventing. Tapping beats typing; typing still works. */
+const NAME_IDEAS = ['sweep', 'patrol', 'tidy', 'hop', 'dash', 'dig', 'dance', 'zigzag'];
 
 function NumberPad({ current, onPick }: { current: Expr | null; onPick: (e: Expr) => void }) {
   const start = current?.kind === 'num' ? current.value : 3;
@@ -149,6 +156,66 @@ function CharacterPad({ characters, onPick }: { characters: string[]; onPick: (e
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function ModePad({ onPick }: { onPick: (e: Expr) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {(Object.keys(MODES) as Mode[]).map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => onPick({ kind: 'ident', name: mode })}
+          className="chunk flex items-start gap-2 bg-white px-3 py-2 text-left"
+        >
+          <span className="text-2xl leading-tight">{MODES[mode].glyph}</span>
+          <span className="min-w-0">
+            <span className="block font-[family-name:var(--font-code)] text-sm">{mode}</span>
+            <span className="block text-[11px] font-bold leading-snug opacity-65">{MODES[mode].power}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function NamePad({ current, onPick }: { current: Expr | null; onPick: (e: Expr) => void }) {
+  const [name, setName] = useState(current?.kind === 'str' ? current.value : '');
+  // A command name has to be a single word the parser can read back.
+  const clean = name.trim().replace(/[^A-Za-z0-9_]/g, '');
+
+  return (
+    <div>
+      <div className="panel mb-3 min-h-14 px-3 py-2 font-[family-name:var(--font-code)] text-lg font-bold">
+        {clean ? `define ${clean} { }` : <span className="opacity-35">pick a name…</span>}
+      </div>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {NAME_IDEAS.map((n) => (
+          <button key={n} type="button" onClick={() => setName(n)} className="chunk bg-white px-3 text-sm">
+            {n}
+          </button>
+        ))}
+      </div>
+      <label className="mb-1 block text-xs font-bold uppercase opacity-55">or make one up</label>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value.slice(0, 14))}
+        spellCheck={false}
+        autoCapitalize="none"
+        autoCorrect="off"
+        className="panel mb-3 w-full px-3 py-2 font-[family-name:var(--font-code)] text-base"
+        placeholder="yourCommand"
+      />
+      <button
+        type="button"
+        disabled={!clean}
+        onClick={() => onPick({ kind: 'str', value: clean })}
+        className="chunk w-full bg-emerald-400 py-3 text-lg"
+      >
+        Teach it
+      </button>
     </div>
   );
 }

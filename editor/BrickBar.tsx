@@ -18,16 +18,19 @@ export function BrickBar({
   brickIds,
   cast,
   variable,
+  defined,
   onTap,
   onShowHelp,
 }: {
   brickIds: string[];
   cast: string[];
   variable?: string;
+  /** Commands he defined himself, which appear as bricks of their own. */
+  defined?: string[];
   onTap: (brick: Brick) => void;
   onShowHelp: (brick: Brick) => void;
 }) {
-  const bricks = bricksFor(brickIds, cast, variable);
+  const bricks = bricksFor(brickIds, cast, variable, defined);
   const scroller = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);

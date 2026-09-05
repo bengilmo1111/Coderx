@@ -51,19 +51,30 @@ function noteFailure(profileId: string) {
   attempts.set(profileId, { ...record, count: record.count + 1 });
 }
 
-/** Who can sign in here, and who is signed in now. Never returns a hash. */
+/**
+ * Who can sign in here, and who is signed in now. Never returns a hash.
+ *
+ * `reachable` matters as much as `sync`. sbSelect returns null when the request
+ * fails — a paused free-tier project, wrong credentials, a timeout — and an
+ * earlier version collapsed that into the same empty array a healthy but empty
+ * database returns. "Configured and working" and "configured and completely
+ * unreachable" then looked identical, which is the same silent-degradation trap
+ * as the blank env var that once disabled the tutor.
+ */
 export async function GET() {
   if (!syncEnabled()) {
-    return NextResponse.json({ sync: false, signedIn: false, profiles: [] });
+    return NextResponse.json({ sync: false, reachable: false, signedIn: false, profiles: [] });
   }
-  const rows = (await sbSelect<ProfileRow>('profiles', 'select=id,name,avatar&order=created_at')) ?? [];
+  const rows = await sbSelect<ProfileRow>('profiles', 'select=id,name,avatar&order=created_at');
+  const reachable = rows !== null;
   const id = await currentProfileId();
-  const me = rows.find((r) => r.id === id) ?? null;
+  const me = rows?.find((r) => r.id === id) ?? null;
   return NextResponse.json({
     sync: true,
+    reachable,
     signedIn: Boolean(me),
     profile: me ? { id: me.id, name: me.name, avatar: me.avatar } : null,
-    profiles: rows.map((r) => ({ id: r.id, name: r.name, avatar: r.avatar })),
+    profiles: (rows ?? []).map((r) => ({ id: r.id, name: r.name, avatar: r.avatar })),
   });
 }
 

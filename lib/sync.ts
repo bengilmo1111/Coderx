@@ -14,6 +14,8 @@ import type { ProgressState } from '@/progress/types';
 export interface SyncStatus {
   /** Is a database configured at all? */
   enabled: boolean;
+  /** Did it actually answer? Configured-but-asleep is a different thing. */
+  reachable: boolean;
   signedIn: boolean;
   profile?: { id: string; name: string; avatar: string } | null;
   profiles?: { id: string; name: string; avatar: string }[];
@@ -27,12 +29,13 @@ export async function fetchStatus(): Promise<SyncStatus> {
     const data = await res.json();
     return {
       enabled: Boolean(data.sync),
+      reachable: Boolean(data.reachable),
       signedIn: Boolean(data.signedIn),
       profile: data.profile ?? null,
       profiles: data.profiles ?? [],
     };
   } catch {
-    return { enabled: false, signedIn: false };
+    return { enabled: false, reachable: false, signedIn: false };
   }
 }
 

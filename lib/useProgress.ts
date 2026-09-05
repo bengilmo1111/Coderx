@@ -26,7 +26,7 @@ export function useProgress() {
   const [state, setState] = useState<ProgressState>(emptyProgress);
   const [ready, setReady] = useState(false);
   const [streakOutcome, setStreakOutcome] = useState<StreakOutcome | null>(null);
-  const [sync, setSync] = useState<SyncStatus>({ enabled: false, signedIn: false });
+  const [sync, setSync] = useState<SyncStatus>({ enabled: false, reachable: false, signedIn: false });
 
   const latest = useRef(state);
   latest.current = state;

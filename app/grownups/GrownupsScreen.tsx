@@ -196,6 +196,12 @@ export function GrownupsScreen() {
               ⚠️ Not syncing. Progress lives only in this browser, so the computer and the phone are
               separate games. Add the Supabase environment variables to switch it on.
             </p>
+          ) : !sync.reachable ? (
+            <p className="text-sm font-bold">
+              ⚠️ A database is configured, but it did not answer. That is usually a free Supabase project
+              that has gone to sleep, or the wrong key. Henry will not notice — the game runs entirely on
+              his device — but nothing is syncing until it wakes.
+            </p>
           ) : !sync.signedIn ? (
             <p className="text-sm font-bold">⚠️ A database is configured, but nobody is signed in on this device.</p>
           ) : (

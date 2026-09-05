@@ -4,6 +4,28 @@ coderX draws everything as emoji by default. That is deliberate — it costs
 nothing, loads instantly, and renders on every device. Real artwork is a
 straight upgrade that needs no code change.
 
+## What is in, as of the September art run
+
+All seven characters are drawn and wired up: `sniff`, `kea`, `weka`, `bolt`,
+`nan`, `meatball`, `dragon`. They are 512×512 palette PNGs with real
+transparency, 29–66KB each, and they render in the game and on the sign-in
+screen. Nothing further is needed for them.
+
+Still emoji, and still fine as emoji until somebody fancies drawing them:
+
+- **`bolt:drill`, `bolt:jet`, `bolt:magnet`** — the biggest remaining win by
+  some distance. Chapter 3 is the transforming-robot chapter and Bolt currently
+  transforms into *the same picture with a small badge in the corner*.
+- **`item:rubbish`, `item:sword`, `item:part`** — lower value. The litter is
+  drawn per-piece in code so a messy street looks messy, which a single
+  picture would flatten.
+
+One note for a future run: every sprite is drawn into the same square, so how
+big a character looks is decided by how much of its 512×512 it fills, not by
+what it is. Nan currently stands as tall as the dragon. If that ever bothers
+anyone, it is fixed by re-cropping the art rather than by changing code —
+leave a lot of headroom above a small character.
+
 ## Dropping art in
 
 1. Put square PNGs with **transparent backgrounds** in this folder.

@@ -32,6 +32,8 @@ export interface ProgressState {
   version: 1;
   agentName: string;
   hqName: string;
+  /** Which of the cast he plays as. Cosmetic, and he cares about it a lot. */
+  avatar: string;
   xp: number;
   levels: Record<string, LevelProgress>;
   stickers: string[];

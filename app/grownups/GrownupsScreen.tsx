@@ -203,10 +203,21 @@ export function GrownupsScreen() {
               his device — but nothing is syncing until it wakes.
             </p>
           ) : !sync.signedIn ? (
-            <p className="text-sm font-bold">⚠️ A database is configured, but nobody is signed in on this device.</p>
+            <p className="text-sm font-bold">
+              ⚠️ A database is configured, but nobody is signed in on this device. Progress is being kept
+              locally and is safe — tap the character in the top corner of the home screen to sign in, or to
+              save this device&apos;s game to the cloud under a new name.
+            </p>
           ) : (
             <ul className="space-y-1 text-sm font-bold">
               <li>✅ Signed in as {sync.profile?.name}</li>
+              {(sync.profiles?.length ?? 0) > 1 && (
+                <li className="opacity-60">
+                  {sync.profiles?.length} players on this database: {sync.profiles?.map((p) => p.name).join(', ')}.
+                  Each has their own XP, stickers and streak — swapping between them on the home screen never
+                  mixes them.
+                </li>
+              )}
               <li className="opacity-60">
                 {sync.lastSyncedAt
                   ? `Last synced ${new Date(sync.lastSyncedAt).toLocaleString('en-NZ')}`

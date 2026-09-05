@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { emptyProgress, store, visit } from '@/progress/store';
+import { emptyProgress, lastProfileId, store, visit } from '@/progress/store';
 import { mergeProgress } from '@/progress/merge';
 import type { ProgressState } from '@/progress/types';
 import type { StreakOutcome } from '@/progress/streak';
@@ -27,13 +27,25 @@ export function useProgress() {
   const [ready, setReady] = useState(false);
   const [streakOutcome, setStreakOutcome] = useState<StreakOutcome | null>(null);
   const [sync, setSync] = useState<SyncStatus>({ enabled: false, reachable: false, signedIn: false });
+  /**
+   * Has the server been asked who exists yet?
+   *
+   * On a brand-new device this is the difference between offering Henry the
+   * four-emoji sign-in and offering him the new-player wizard. Guessing wrong
+   * for even one frame is how you end up with two Henrys in the database.
+   */
+  const [syncChecked, setSyncChecked] = useState(false);
 
   const latest = useRef(state);
   latest.current = state;
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const loaded = store.load();
+    // Paint from whoever was playing here last, before asking the server. The
+    // cookie is still what decides; this only avoids showing him a stranger's
+    // empty game for the length of a round trip.
+    const remembered = lastProfileId();
+    const loaded = remembered ? store.use(remembered) : store.load();
     const { state: withVisit, outcome } = visit(loaded);
     store.save(withVisit);
     setState(withVisit);
@@ -44,23 +56,9 @@ export function useProgress() {
     void (async () => {
       const status = await fetchStatus();
       setSync(status);
-      if (!status.enabled || !status.signedIn) return;
-
-      const remote = await pullProgress();
-      if (remote) {
-        setState((prev) => {
-          // Merge, never replace: this is also how his existing progress on
-          // this device gets adopted the first time he ever signs in.
-          const merged = mergeProgress({ ...emptyProgress(), ...remote }, prev);
-          store.save(merged);
-          return merged;
-        });
-      }
-      // Push straight away so whatever was only on this device lands.
-      const confirmed = await pushProgress(latest.current);
-      if (confirmed) {
-        setSync((s) => ({ ...s, lastSyncedAt: new Date().toISOString() }));
-      }
+      setSyncChecked(true);
+      if (!status.enabled || !status.signedIn || !status.profile) return;
+      await adopt(status.profile.id);
     })();
   }, []);
 
@@ -94,18 +92,38 @@ export function useProgress() {
     });
   }, []);
 
-  /** After signing in or creating a profile, adopt what is already on this device. */
-  const refreshSync = useCallback(async () => {
-    const status = await fetchStatus();
-    setSync(status);
-    if (!status.signedIn) return;
+  /**
+   * Load one child's progress and reconcile it with the server's copy.
+   *
+   * The merge is only ever between this profile's own local slot and this
+   * profile's own remote row. It deliberately does not use whatever happened to
+   * be on screen a moment ago: on the shared computer that would be his
+   * brother's game, and the merge takes the better of two values rather than
+   * asking, so Casper would quietly inherit Henry's four hundred XP.
+   */
+  const adopt = useCallback(async (profileId: string) => {
+    const mine = store.use(profileId);
     const remote = await pullProgress();
-    const merged = remote ? mergeProgress({ ...emptyProgress(), ...remote }, latest.current) : latest.current;
+    const merged = remote ? mergeProgress({ ...emptyProgress(), ...remote }, mine) : mine;
     store.save(merged);
     setState(merged);
     const confirmed = await pushProgress(merged);
     if (confirmed) setSync((s) => ({ ...s, lastSyncedAt: new Date().toISOString() }));
   }, []);
 
-  return { state, update, ready, streakOutcome, sync, refreshSync };
+  /** After signing in, creating a profile, or signing out. */
+  const refreshSync = useCallback(async () => {
+    const status = await fetchStatus();
+    setSync(status);
+    setSyncChecked(true);
+    if (status.signedIn && status.profile) {
+      await adopt(status.profile.id);
+      return;
+    }
+    // Signed out: stop writing to whoever's slot we were in, and show the
+    // anonymous one rather than leaving his brother's XP on screen.
+    setState(store.use(null));
+  }, [adopt]);
+
+  return { state, update, ready, streakOutcome, sync, syncChecked, refreshSync };
 }

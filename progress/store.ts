@@ -13,11 +13,63 @@ import type { LevelProgress, ProgressState } from './types';
 
 const KEY = 'coderx.progress.v1';
 
+/**
+ * Whose progress this browser is currently reading and writing.
+ *
+ * There are two children. The merge is deliberately monotonic — it takes the
+ * better of two values and never deletes — which is exactly right for one child
+ * on two devices and exactly wrong for two children on one computer: signing
+ * Casper in against Henry's slot would hand him Henry's XP, stickers and
+ * streak, and Henry would pull the combined blob straight back. So the slot is
+ * keyed by profile, and the two of them simply never touch the same one.
+ */
+let activeProfileId: string | null = null;
+
+/** The anonymous slot: before anyone signs in, and when sync is switched off. */
+function keyFor(profileId: string | null): string {
+  return profileId ? `${KEY}.${profileId}` : KEY;
+}
+
+/** Which profile has already taken over the anonymous slot's progress. */
+const CLAIM_KEY = 'coderx.progress.claimedBy';
+
+/**
+ * Who was playing here last.
+ *
+ * Written locally so the very first paint after a reload reads the right slot.
+ * Without it the page renders from the anonymous slot, waits for the server to
+ * say who is signed in, and only then swaps in the real progress — which shows
+ * a child who has four hundred XP a screen that says nought, for as long as the
+ * round trip takes. The cookie remains the authority; this is only a guess good
+ * enough to paint with, and the server correcting it is an ordinary update.
+ */
+const ACTIVE_KEY = 'coderx.progress.activeProfile';
+
+/** The profile this device was last signed in as, if any. */
+export function lastProfileId(): string | null {
+  try {
+    return window.localStorage.getItem(ACTIVE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Has this state ever actually been played? An untouched slot is adoptable. */
+function isUntouched(state: ProgressState): boolean {
+  return (
+    !state.agentName &&
+    state.xp === 0 &&
+    Object.keys(state.levels).length === 0 &&
+    state.stickers.length === 0
+  );
+}
+
 export function emptyProgress(): ProgressState {
   return {
     version: 1,
     agentName: '',
     hqName: '',
+    avatar: 'sniff',
     xp: 0,
     levels: {},
     stickers: [],
@@ -38,49 +90,106 @@ export interface ProgressStore {
   load(): ProgressState;
   save(state: ProgressState): void;
   clear(): void;
+  /** Point the store at one child's slot, and return what is in it. */
+  use(profileId: string | null, options?: { adopt?: boolean }): ProgressState;
 }
 
 /** Used during SSR and if the browser has storage switched off. */
 class MemoryStore implements ProgressStore {
-  private state = emptyProgress();
+  private slots = new Map<string, ProgressState>();
   load() {
-    return this.state;
+    return this.slots.get(keyFor(activeProfileId)) ?? emptyProgress();
   }
   save(s: ProgressState) {
-    this.state = s;
+    this.slots.set(keyFor(activeProfileId), s);
   }
   clear() {
-    this.state = emptyProgress();
+    this.slots.delete(keyFor(activeProfileId));
   }
+  use(profileId: string | null) {
+    activeProfileId = profileId;
+    return this.load();
+  }
+
 }
 
 class LocalStore implements ProgressStore {
   load(): ProgressState {
-    try {
-      const raw = window.localStorage.getItem(KEY);
-      if (!raw) return emptyProgress();
-      const parsed = JSON.parse(raw) as ProgressState;
-      // Forwards-compatible merge — a new field must never wipe his stickers.
-      return { ...emptyProgress(), ...parsed, streak: { ...emptyStreak(), ...parsed.streak } };
-    } catch {
-      return emptyProgress();
-    }
+    return readSlot(keyFor(activeProfileId));
   }
   save(state: ProgressState) {
     try {
       // Stamped on every write, so merging two devices can tell which one last
       // touched a field that has no "better" value — his half-written code.
-      window.localStorage.setItem(KEY, JSON.stringify({ ...state, updatedAt: new Date().toISOString() }));
+      window.localStorage.setItem(
+        keyFor(activeProfileId),
+        JSON.stringify({ ...state, updatedAt: new Date().toISOString() }),
+      );
     } catch {
       /* Private browsing, quota, storage disabled — never break the game over it. */
     }
   }
   clear() {
     try {
-      window.localStorage.removeItem(KEY);
+      window.localStorage.removeItem(keyFor(activeProfileId));
     } catch {
       /* ignore */
     }
+  }
+
+  /**
+   * Switch to a profile's own slot, adopting the anonymous one exactly once.
+   *
+   * Henry played three chapters on the family computer before there was any
+   * such thing as a profile, and all of it sits in the anonymous slot. The
+   * first child to sign in on a device inherits that — otherwise signing in
+   * would look to him like losing everything. The second child must not, so
+   * the adoption is recorded and never repeats. Casper starts at zero, which
+   * is the only honest place for him to start.
+   */
+  use(profileId: string | null, options?: { adopt?: boolean }): ProgressState {
+    activeProfileId = profileId;
+    try {
+      if (profileId) window.localStorage.setItem(ACTIVE_KEY, profileId);
+      else window.localStorage.removeItem(ACTIVE_KEY);
+    } catch {
+      /* Storage disabled. Costs a flash of the anonymous slot, nothing more. */
+    }
+    if (!profileId) return this.load();
+
+    const own = readSlot(keyFor(profileId));
+    if (!isUntouched(own)) return own;
+    // Adding a second player is the one case where we know the progress on this
+    // device is somebody else's. Casper says so by arriving through "someone
+    // else", and the caller writes his name into the slot immediately after,
+    // so this decision does not have to be remembered.
+    if (options?.adopt === false) return own;
+
+    try {
+      const claimedBy = window.localStorage.getItem(CLAIM_KEY);
+      if (claimedBy && claimedBy !== profileId) return own;
+
+      const anonymous = readSlot(KEY);
+      if (isUntouched(anonymous)) return own;
+
+      window.localStorage.setItem(CLAIM_KEY, profileId);
+      this.save(anonymous);
+      return anonymous;
+    } catch {
+      return own;
+    }
+  }
+}
+
+function readSlot(key: string): ProgressState {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return emptyProgress();
+    const parsed = JSON.parse(raw) as ProgressState;
+    // Forwards-compatible merge — a new field must never wipe his stickers.
+    return { ...emptyProgress(), ...parsed, streak: { ...emptyStreak(), ...parsed.streak } };
+  } catch {
+    return emptyProgress();
   }
 }
 

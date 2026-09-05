@@ -4,12 +4,25 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test';
  * The actual user story: Henry plays on the family computer, then picks up the
  * phone, and it is the same game.
  *
- * Opt-in, because it needs a real configured database and it creates a profile
- * each run. Against a deployment with Supabase set up:
+ * Opt-in, because it needs a configured database and creates a profile each
+ * run. Two ways to give it one:
  *
+ *   # against the fake, which is emptied between tests and costs nothing
+ *   node e2e/fake-postgrest.mjs &
+ *   SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_SERVICE_ROLE_KEY=x \
+ *     SESSION_SECRET=test-secret-abcdefghijklmnop npx next start -p 3100 &
+ *   E2E_BASE_URL=http://127.0.0.1:3100 E2E_FAKE_DB=http://127.0.0.1:54321 \
+ *     npx playwright test sync
+ *
+ *   # against a real deployment — leaves a profile behind, so tidy up after
  *   E2E_SYNC=1 E2E_BASE_URL=https://coderx-psi.vercel.app npx playwright test sync
  */
-test.skip(process.env.E2E_SYNC !== '1', 'needs a configured Supabase project');
+const FAKE_DB = process.env.E2E_FAKE_DB;
+test.skip(process.env.E2E_SYNC !== '1' && !FAKE_DB, 'needs a configured Supabase project');
+
+test.beforeEach(async ({ request }) => {
+  if (FAKE_DB) await request.post(`${FAKE_DB}/__reset`).catch(() => undefined);
+});
 
 const PIN = ['🍕', '🚀', '🐶', '🍕'];
 
@@ -46,6 +59,9 @@ test('progress follows him from one device to the other', async ({ browser }) =>
   await one.getByRole('textbox').first().fill(name);
   await one.getByRole('button', { name: 'The Shed' }).click();
   await one.getByRole('button', { name: /Next|Let's go/ }).click();
+  // Set once, then confirmed — a secret typed wrong here is only discovered on
+  // the other device, weeks later, so it is asked for twice.
+  await tapPin(one);
   await tapPin(one);
   await expect(one.getByRole('heading', { name: 'The Shed' })).toBeVisible({ timeout: 20_000 });
 
@@ -58,9 +74,14 @@ test('progress follows him from one device to the other', async ({ browser }) =>
   const phone: BrowserContext = await browser.newContext();
   const two = await phone.newPage();
   await two.goto('/');
-  await two.getByRole('textbox').first().fill(name);
-  await two.getByRole('button', { name: 'The Shed' }).click();
-  await two.getByRole('button', { name: /Next|Let's go/ }).click();
+
+  // It must offer to let him IN, not offer to set him up again. This assertion
+  // is the point of the test: the version before it, the phone showed the
+  // new-player wizard and he ended up with two profiles and half his stickers
+  // in each.
+  await expect(two.getByText(new RegExp(`Hello again, ${name}`))).toBeVisible({ timeout: 20_000 });
+  await expect(two.getByPlaceholder('Agent…')).toHaveCount(0);
+
   await tapPin(two);
 
   // Everything he did on the computer is here.

@@ -146,3 +146,18 @@ describe('the fiddly fields', () => {
     expect(mergeProgress(a, b).createdAt).toBe('2026-08-01T00:00:00Z');
   });
 });
+
+describe('the character a child picked', () => {
+  it('follows the newer write, like his name does', () => {
+    const older = { ...emptyProgress(), avatar: 'sniff', updatedAt: '2026-09-01T00:00:00.000Z' };
+    const newer = { ...emptyProgress(), avatar: 'dragon', updatedAt: '2026-09-05T00:00:00.000Z' };
+    expect(mergeProgress(older, newer).avatar).toBe('dragon');
+    expect(mergeProgress(newer, older).avatar).toBe('dragon');
+  });
+
+  it('never merges to nothing when one side has not chosen', () => {
+    const chosen = { ...emptyProgress(), avatar: 'bolt', updatedAt: '2026-09-01T00:00:00.000Z' };
+    const blank = { ...emptyProgress(), avatar: '', updatedAt: '2026-09-05T00:00:00.000Z' };
+    expect(mergeProgress(chosen, blank).avatar).toBe('bolt');
+  });
+});

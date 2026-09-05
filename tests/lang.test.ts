@@ -85,3 +85,37 @@ describe('interpreter', () => {
     expect(r.frames).toHaveLength(3);
   });
 });
+
+/**
+ * Nan and Weka stand on the board so they stop being only words in a briefing,
+ * but they are scenery with opinions, not units to order about.
+ */
+describe('characters who take no orders', () => {
+  const street = () =>
+    buildWorld({
+      grid: ['---B-'],
+      sprites: {
+        sniff: { character: 'sniff', x: 0, y: 0 },
+        nan: { character: 'nan', x: 4, y: 0 },
+      },
+      rubbish: [{ x: 1, y: 0 }],
+    });
+
+  it('refuses an order aimed at a bystander, and says who to ask instead', () => {
+    const r = runProgram(parse('move(nan, left)'), street(), { commandable: ['sniff'] });
+    expect(r.error?.boltSays).toMatch(/Nan McSnap does not take orders/);
+    expect(r.error?.tryThis).toMatch(/sniff/);
+  });
+
+  it('still lets the hero move', () => {
+    const r = runProgram(parse('move(sniff, right)'), street(), { commandable: ['sniff'] });
+    expect(r.error).toBeUndefined();
+  });
+
+  it('lets both heroes move when both are commandable', () => {
+    const r = runProgram(parse('move(sniff, right)\nmove(nan, left)'), street(), {
+      commandable: ['sniff', 'nan'],
+    });
+    expect(r.error).toBeUndefined();
+  });
+});

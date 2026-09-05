@@ -24,6 +24,15 @@ export interface Level {
   makeStarter: () => Program;
   /** Which bricks appear in the bar. Deliberately few — choice paralysis is real. */
   bricks: string[];
+  /**
+   * Who takes orders. Defaults to Sniff alone.
+   *
+   * With one, the name is pre-filled into every brick. With two, it becomes a
+   * picker — and coordinating two characters is a genuine step up in thinking.
+   * Anyone on the board who is NOT in this list is scenery with opinions: Nan
+   * and Weka exist to be looked at, not commanded.
+   */
+  commandable?: string[];
   goal: (ctx: GoalContext) => boolean;
   /** Tested: every level must be solvable by this exact source. */
   reference: string;

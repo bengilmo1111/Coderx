@@ -19,7 +19,7 @@ import { CHARACTERS, type WorldState } from '@/runtime/world';
 import type { Level } from '@/curriculum/types';
 
 /** Compact, factual description of the board. Columns are 0-based from the left. */
-export function describeWorld(world: WorldState): string {
+export function describeWorld(world: WorldState, commandable: string[] = ['sniff']): string {
   const cols = (predicate: (x: number, y: number) => boolean) => {
     const found: string[] = [];
     for (let y = 0; y < world.h; y += 1)
@@ -29,13 +29,20 @@ export function describeWorld(world: WorldState): string {
 
   const bins = cols((x, y) => world.tiles[y][x] === 'bin');
   const rubbish = world.rubbish.map((r) => String(r.x)).join(', ') || 'none';
-  const who = Object.entries(world.sprites)
-    .map(([name, s]) => `"${name}" (${CHARACTERS[s.character].label}) starts at column ${s.x}`)
-    .join('; ');
+  const heroes = Object.entries(world.sprites).filter(([name]) => commandable.includes(name));
+  const bystanders = Object.entries(world.sprites).filter(([name]) => !commandable.includes(name));
+
+  const who =
+    `You command ${heroes.map(([n, s]) => `"${n}" (${CHARACTERS[s.character].label}), at column ${s.x}`).join(' and ')}.` +
+    (bystanders.length
+      ? ` Also on the board, but taking no orders from anyone: ${bystanders
+          .map(([n, s]) => `${CHARACTERS[s.character].label} at column ${s.x}`)
+          .join(', ')}. Never tell him to command them.`
+      : '');
 
   return [
     `The board is ${world.w} squares wide. Columns are numbered from 0 at the far left to ${world.w - 1} at the right.`,
-    `${who}. Everything happens along one row, so only left and right matter.`,
+    `${who} Everything happens along one row, so only left and right matter.`,
     `Bins are at column(s): ${bins}. Rubbish is at column(s): ${rubbish}.`,
     'Walking past column ' + (world.w - 1) + ' or before column 0 hits the fence.',
   ].join(' ');
@@ -62,7 +69,7 @@ export function simulate(level: Level, code: string): Simulation {
 
   try {
     const program = parse(code);
-    const result = runProgram(program, level.makeWorld());
+    const result = runProgram(program, level.makeWorld(), { commandable: level.commandable ?? ['sniff'] });
     const size = countStmts(program);
     const solved =
       !result.error && level.goal({ world: result.finalWorld, saids: result.saids, size });

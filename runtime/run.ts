@@ -24,9 +24,9 @@ export interface RunResult {
 export function runProgram(
   program: Program,
   world: WorldState,
-  options: { maxSteps?: number } = {},
+  options: { maxSteps?: number; commandable?: string[] } = {},
 ): RunResult {
-  const host = new WorldHost(world);
+  const host = new WorldHost(world, options.commandable ?? []);
   const gen = execute(program, host, { maxSteps: options.maxSteps ?? DEFAULT_MAX_STEPS });
 
   let steps = 0;

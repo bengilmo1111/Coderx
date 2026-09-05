@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { CodeList } from '@/editor/CodeList';
 import { BrickBar } from '@/editor/BrickBar';
 import { HolePicker } from '@/editor/HolePicker';
-import { BRICKS, type Brick } from '@/editor/bricks';
+import { BRICKS, bricksFor, type Brick } from '@/editor/bricks';
 import { countStmts, findStmt, firstHole, getArg, insertStmt, moveStmt, removeStmt, setArg, wrapStmt, type ArgIndex, type Selection } from '@/editor/program';
 
 import { parse } from '@/lang/parser';
@@ -70,6 +70,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
 
   const settled = useRef(false);
   const world = useMemo(() => level.makeWorld(), [level]);
+  const cast = useMemo(() => level.commandable ?? ['sniff'], [level]);
 
   useEffect(() => setMutedState(loadMutePreference()), []);
 
@@ -173,7 +174,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     settled.current = false;
     setBanner(null);
     setAwards(null);
-    const result = runProgram(program, level.makeWorld());
+    const result = runProgram(program, level.makeWorld(), { commandable: cast });
     setRunResult(result);
     sfx.step();
   };
@@ -262,7 +263,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   const runningStmtId = playback.playing && runResult ? (runResult.frames[playback.index]?.stmtId ?? null) : null;
   const source = printSource(program);
   const rank = rankFor(state.xp);
-  const characters = Object.keys(world.sprites);
+
 
   return (
     <main className="flex h-[100dvh] flex-col overflow-hidden">
@@ -350,17 +351,18 @@ export function PlayScreen({ levelId }: { levelId: string }) {
                 when he runs it. */}
             {level.maxLines ? (
               <span
-                className={`shrink-0 rounded-md border-2 border-ink px-1.5 py-0.5 text-[11px] font-black sm:flex-1 sm:border-0 sm:px-0 ${
-                  countStmts(program) > level.maxLines ? 'bg-danger text-white sm:bg-transparent sm:text-red-600' : 'bg-pop'
+                className={`shrink-0 rounded-md border-2 border-ink px-1.5 py-0.5 text-[11px] font-black ${
+                  countStmts(program) > level.maxLines ? 'bg-danger text-white' : 'bg-pop'
                 }`}
               >
                 {countStmts(program)}/{level.maxLines} lines
               </span>
             ) : (
-              <span className="hidden text-[11px] font-black uppercase tracking-wide opacity-50 sm:block sm:flex-1">
+              <span className="hidden text-[11px] font-black uppercase tracking-wide opacity-50 sm:block">
                 Your code
               </span>
             )}
+            <span className="flex-1" />
             <button type="button" onClick={() => setShowBolt(true)} className="chunk min-h-9 bg-white px-2 text-xs">
               🤖 Bolt
             </button>
@@ -393,21 +395,44 @@ export function PlayScreen({ levelId }: { levelId: string }) {
           </div>
 
           {typing && (
-            <div className="flex gap-2 border-b-2 border-black/10 bg-pop/30 p-2">
-              <input
-                autoFocus
-                value={typedDraft}
-                onChange={(e) => setTypedDraft(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addTypedLine()}
-                placeholder="move(sniff, right)"
-                spellCheck={false}
-                autoCapitalize="none"
-                autoCorrect="off"
-                className="panel min-w-0 flex-1 px-2 py-2 font-[family-name:var(--font-code)] text-sm"
-              />
-              <button type="button" onClick={addTypedLine} className="chunk bg-emerald-400 px-3 text-sm">
-                Add
-              </button>
+            <div className="border-b-2 border-black/10 bg-pop/30 p-2">
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  value={typedDraft}
+                  onChange={(e) => setTypedDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addTypedLine()}
+                  placeholder="start typing, or tap a line below"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  className="panel min-w-0 flex-1 px-2 py-2 font-[family-name:var(--font-code)] text-sm"
+                />
+                <button type="button" onClick={addTypedLine} className="chunk bg-emerald-400 px-3 text-sm">
+                  Add
+                </button>
+              </div>
+
+              {/* The syntax, visible. He tried typing and found it hard, which is
+                  fair — nothing told him what a line is meant to look like.
+                  Tapping one drops the real thing in the box to edit. */}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {bricksFor(level.bricks, cast)
+                  .filter((b) => b.example.toLowerCase().startsWith(typedDraft.trim().toLowerCase()))
+                  .map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => {
+                        sfx.tap();
+                        setTypedDraft(b.example);
+                      }}
+                      className="chunk min-h-8 bg-white px-2 font-[family-name:var(--font-code)] text-[12px]"
+                    >
+                      {b.example}
+                    </button>
+                  ))}
+              </div>
             </div>
           )}
 
@@ -422,7 +447,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
             />
           </div>
 
-          <BrickBar brickIds={level.bricks} onTap={tapBrick} onShowHelp={(b) => setBanner(new CoderXError(BRICKS[b.id].help))} />
+          <BrickBar brickIds={level.bricks} cast={cast} onTap={tapBrick} onShowHelp={(b) => setBanner(new CoderXError(BRICKS[b.id].help))} />
         </section>
       </div>
 
@@ -430,7 +455,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
         <HolePicker
           slot={picker.slot}
           current={getArg(program, picker.stmtId, picker.index)}
-          characters={characters}
+          characters={cast}
           onPick={fillHole}
           onClose={() => setPicker(null)}
         />

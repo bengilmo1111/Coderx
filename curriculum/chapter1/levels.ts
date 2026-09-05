@@ -96,8 +96,12 @@ drop(sniff)`,
     goalText: 'Bin all three — in 5 lines or fewer.',
     makeWorld: () =>
       buildWorld({
-        grid: ['B-B-B--'],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+        grid: ['B-B-B---'],
+        sprites: {
+          sniff: { character: 'sniff', x: 0, y: 0 },
+          // Nan is named in the briefing; she should be visible in it too.
+          nan: { character: 'nan', x: 7, y: 0, facing: 'left' },
+        },
         rubbish: [
           { x: 0, y: 0 },
           { x: 2, y: 0 },
@@ -137,8 +141,11 @@ drop(sniff)`,
     goalText: 'Bin all three — in 6 lines or fewer.',
     makeWorld: () =>
       buildWorld({
-        grid: ['-B-B-B-'],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+        grid: ['-B-B-B--'],
+        sprites: {
+          sniff: { character: 'sniff', x: 0, y: 0 },
+          weka: { character: 'weka', x: 7, y: 0, facing: 'left' },
+        },
         rubbish: [
           { x: 0, y: 0 },
           { x: 2, y: 0 },
@@ -178,8 +185,11 @@ drop(sniff)`,
     goalText: 'Bin every piece — in 6 lines or fewer.',
     makeWorld: () =>
       buildWorld({
-        grid: ['BBBBB-'],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+        grid: ['BBBBB--'],
+        sprites: {
+          sniff: { character: 'sniff', x: 0, y: 0 },
+          weka: { character: 'weka', x: 6, y: 0, facing: 'left' },
+        },
         rubbish: [
           { x: 0, y: 0 },
           { x: 2, y: 0 },
@@ -221,8 +231,11 @@ drop(sniff)`,
     goalText: 'Bin everything and give Sniff a line — in 7 lines or fewer.',
     makeWorld: () =>
       buildWorld({
-        grid: ['B-B-B-B-B--'],
-        sprites: { sniff: { character: 'sniff', x: 0, y: 0 } },
+        grid: ['B-B-B-B-B---'],
+        sprites: {
+          sniff: { character: 'sniff', x: 0, y: 0 },
+          nan: { character: 'nan', x: 11, y: 0, facing: 'left' },
+        },
         rubbish: [
           { x: 0, y: 0 },
           { x: 4, y: 0 },

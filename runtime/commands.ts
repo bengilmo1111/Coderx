@@ -51,7 +51,11 @@ export class WorldHost implements Host {
   readonly frames: Frame[] = [];
   private pending: Effect[] = [];
 
-  constructor(public world: WorldState) {}
+  /** `commandable` empty means everyone takes orders. */
+  constructor(
+    public world: WorldState,
+    private readonly commandable: string[] = [],
+  ) {}
 
   /** Called by the player after each yielded step. */
   snapshot(stmtId: string): void {
@@ -63,6 +67,12 @@ export class WorldHost implements Host {
     const key = String(name);
     const s = this.world.sprites[key];
     if (!s) throw errors.noSuchCharacter(key, stmtId);
+    if (this.commandable.length && !this.commandable.includes(key)) {
+      throw new CoderXError(`${CHARACTERS[s.character].label} does not take orders from you.`, {
+        stmtId,
+        tryThis: `Try ${this.commandable.join(' or ')} instead.`,
+      });
+    }
     return s;
   }
 

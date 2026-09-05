@@ -60,10 +60,13 @@ describe('the tutor knows what actually happened', () => {
 
   it('describes the board factually, including that it is one row', () => {
     const text = describeWorld(level.makeWorld());
-    expect(text).toContain('7 squares wide');
+    expect(text).toContain('8 squares wide');
     expect(text).toMatch(/only left and right matter/);
     expect(text).toMatch(/Bins are at column\(s\): 0, 2, 4/);
-    expect(text).toMatch(/"sniff"/);
+    expect(text).toMatch(/You command "sniff"/);
+    // Nan is on the board but takes no orders, and Bolt must know the difference.
+    expect(text).toMatch(/taking no orders/);
+    expect(text).toMatch(/Nan McSnap/);
   });
 
   it('describes every level without blowing up', () => {

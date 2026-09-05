@@ -16,6 +16,7 @@ const HQ_NAMES = ['The Shed', 'Bin HQ', 'The Bunker', 'Sock Drawer', 'The Kennel
 export function HomeScreen() {
   const { state, update, ready, streakOutcome } = useProgress();
   const [tab, setTab] = useState<'capers' | 'stickers' | 'cards'>('capers');
+  const [renaming, setRenaming] = useState(false);
 
   if (!ready) return <div className="p-6 text-center font-black opacity-40">Loading HQ…</div>;
 
@@ -30,12 +31,19 @@ export function HomeScreen() {
     <main className="dots min-h-[100dvh] pb-10">
       <header className="border-b-[3px] border-ink bg-white/70 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="title text-2xl leading-none">{state.hqName || 'HQ'}</h1>
+          <button
+            type="button"
+            onClick={() => setRenaming(true)}
+            className="min-w-0 flex-1 text-left"
+            title="Change your name"
+          >
+            <h1 className="title text-2xl leading-none">
+              {state.hqName || 'HQ'} <span className="text-sm opacity-35">✏️</span>
+            </h1>
             <p className="truncate text-xs font-bold opacity-60">
               Agent {state.agentName} · {rank.glyph} {rank.name}
             </p>
-          </div>
+          </button>
           <div className="chunk flex items-center gap-1 bg-orange-300 px-3 text-sm" title="Days in a row">
             🔥 {state.streak.count}
           </div>
@@ -60,6 +68,18 @@ export function HomeScreen() {
             🧊 Your streak was frozen while you were away. It&apos;s still going.
           </div>
         </div>
+      )}
+
+      {renaming && (
+        <Rename
+          agent={state.agentName}
+          hq={state.hqName}
+          onSave={(agentName, hqName) => {
+            update((p) => ({ ...p, agentName, hqName }));
+            setRenaming(false);
+          }}
+          onClose={() => setRenaming(false)}
+        />
       )}
 
       <div className="mx-auto max-w-3xl px-4">
@@ -156,6 +176,61 @@ export function HomeScreen() {
         )}
       </div>
     </main>
+  );
+}
+
+/** Names are not forever. He asked to be able to change his. */
+function Rename({
+  agent,
+  hq,
+  onSave,
+  onClose,
+}: {
+  agent: string;
+  hq: string;
+  onSave: (agent: string, hq: string) => void;
+  onClose: () => void;
+}) {
+  const [nextAgent, setNextAgent] = useState(agent);
+  const [nextHq, setNextHq] = useState(hq);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="panel pop-in w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+        <h2 className="title mb-4 text-2xl">Change your name</h2>
+
+        <label className="mb-1 block text-xs font-black uppercase opacity-55">Agent name</label>
+        <input
+          value={nextAgent}
+          onChange={(e) => setNextAgent(e.target.value.slice(0, 16))}
+          className="panel mb-3 w-full px-3 py-2 text-lg font-bold"
+        />
+
+        <label className="mb-1 block text-xs font-black uppercase opacity-55">HQ name</label>
+        <input
+          value={nextHq}
+          onChange={(e) => setNextHq(e.target.value.slice(0, 20))}
+          className="panel mb-4 w-full px-3 py-2 text-lg font-bold"
+        />
+
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="chunk bg-white px-4">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!nextAgent.trim() || !nextHq.trim()}
+            onClick={() => {
+              sfx.win();
+              onSave(nextAgent.trim(), nextHq.trim());
+            }}
+            className="chunk flex-1 bg-emerald-400 py-3 text-lg"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

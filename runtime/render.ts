@@ -238,13 +238,11 @@ export function drawScene(
     const y = before ? lerp(before.y, r.y, ease) : r.y;
     const { cx, cy } = centre(x, y);
     const carried = Object.values(world.sprites).some((s) => s.carrying === r.id);
-    glyph(
-      ctx,
-      litterGlyph(r.id),
-      cx,
-      cy + (carried ? -L.cell * 0.42 : L.cell * 0.08),
-      L.cell * (carried ? 0.36 : 0.5),
-    );
+    // Rubbish sits in the top of the square. Levels 3 onward put rubbish ON a
+    // bin, and drawn centred it looked like it was already in the bin — which
+    // is the opposite of the thing you are being asked to fix.
+    const lift = carried ? -L.cell * 0.42 : -L.cell * 0.22;
+    glyph(ctx, litterGlyph(r.id), cx, cy + lift, L.cell * (carried ? 0.36 : 0.44));
   }
 
   // Characters.

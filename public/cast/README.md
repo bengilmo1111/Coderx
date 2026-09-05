@@ -6,25 +6,27 @@ straight upgrade that needs no code change.
 
 ## What is in, as of the September art run
 
-All seven characters are drawn and wired up: `sniff`, `kea`, `weka`, `bolt`,
-`nan`, `meatball`, `dragon`. They are 512×512 palette PNGs with real
-transparency, 29–66KB each, and they render in the game and on the sign-in
-screen. Nothing further is needed for them.
+**Everything.** All thirteen keys are drawn, wired up and verified: the seven
+characters, Bolt's three transformed shapes, and the three items. Every file is
+a 512×512 PNG with genuinely transparent corners, 24–68KB, well inside budget.
+There is nothing left on this list to draw.
 
-Still emoji, and still fine as emoji until somebody fancies drawing them:
+Bolt's modes do the thing that was asked of them — same red toaster body, same
+face, same slice of toast, unmistakably rebuilt. That was the single biggest
+visual win available and it has been taken.
 
-- **`bolt:drill`, `bolt:jet`, `bolt:magnet`** — the biggest remaining win by
-  some distance. Chapter 3 is the transforming-robot chapter and Bolt currently
-  transforms into *the same picture with a small badge in the corner*.
-- **`item:rubbish`, `item:sword`, `item:part`** — lower value. The litter is
-  drawn per-piece in code so a messy street looks messy, which a single
-  picture would flatten.
+Two things worth knowing rather than fixing:
 
-One note for a future run: every sprite is drawn into the same square, so how
-big a character looks is decided by how much of its 512×512 it fills, not by
-what it is. Nan currently stands as tall as the dragon. If that ever bothers
-anyone, it is fixed by re-cropping the art rather than by changing code —
-leave a lot of headroom above a small character.
+- **One picture of rubbish now stands in for every piece of litter.** The
+  drawing has a banana skin, a drink cup, a pizza slice and a newspaper in it,
+  so a single piece reads as a proper mess — but a street with four pieces on
+  it now shows the same pile four times, where the code-drawn version varied.
+  If that looks repetitive in play, the fix is to delete `item:rubbish` from
+  the manifest; the per-piece glyphs come straight back.
+- **Every sprite is drawn into the same square**, so how big a character looks
+  is decided by how much of its 512×512 it fills, not by what it is. Nan stands
+  as tall as the dragon. If that ever bothers anyone it is fixed by re-cropping
+  with more headroom above the small ones, not by changing code.
 
 ## Dropping art in
 

@@ -12,7 +12,21 @@ import type { ProgressState } from '@/progress/types';
  * could happen.
  */
 
-const at = (state: ProgressState, iso: string): ProgressState => ({ ...state, updatedAt: iso });
+/**
+ * Pin both timestamps.
+ *
+ * `createdAt` is stamped from the wall clock by emptyProgress(), and these
+ * fixtures are rebuilt fresh on every call — so the commutativity check below,
+ * which builds four of them, would compare states that differ only by which
+ * millisecond they were constructed in. That failed roughly one run in twenty,
+ * and only ever on a loaded machine, which is the worst way for a test about
+ * not losing a child's stickers to behave.
+ */
+const at = (state: ProgressState, iso: string): ProgressState => ({
+  ...state,
+  updatedAt: iso,
+  createdAt: '2026-09-01T00:00:00.000Z',
+});
 
 /** A Friday night on the phone. */
 function phone(): ProgressState {

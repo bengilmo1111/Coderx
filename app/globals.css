@@ -211,9 +211,21 @@ body {
  * turned the title to mud, which the house art direction rules out — so the
  * card stays solid paper and only its contents dim.
  */
-.caper.locked { background: var(--color-cream); border-style: dashed; }
+.caper.locked { border-style: dashed; }
 .caper.locked .badge { background: #cfd8dd; }
-.caper.locked span { color: var(--color-muted); }
+
+/*
+ * Not-yet-earned things: a locked caper, a sticker he has not collected.
+ *
+ * Dimming with opacity was fine on the old cream page and turns to mud on the
+ * dark green one — the "???" under an uncollected sticker became almost
+ * unreadable. So the card stays solid paper and only its contents go quiet.
+ */
+.faded {
+  background: var(--color-cream);
+  border-style: dashed;
+  color: var(--color-muted);
+}
 
 /*
  * Decorative landscape, behind the welcoming screens only.

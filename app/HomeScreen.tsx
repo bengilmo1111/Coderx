@@ -296,7 +296,7 @@ export function HomeScreen() {
                           ['--tilt' as string]: `${(i % 2 ? 1 : -1) * 0.7}deg`,
                         }}
                         className={`caper flex h-full items-center gap-3 p-4 ${
-                          unlocked ? 'lift' : 'locked pointer-events-none'
+                          unlocked ? 'lift' : 'locked faded pointer-events-none'
                         }`}
                       >
                         <span className="badge text-lg">
@@ -326,7 +326,7 @@ export function HomeScreen() {
             {Object.values(STICKERS).map((s) => {
               const owned = state.stickers.includes(s.id);
               return (
-                <div key={s.id} className={`panel p-3 text-center ${owned ? '' : 'opacity-45'}`}>
+                <div key={s.id} className={`panel p-3 text-center ${owned ? '' : 'faded'}`}>
                   <div className="text-4xl">{owned ? s.glyph : '❓'}</div>
                   <p className="mt-1 text-sm font-black">{owned ? s.name : '???'}</p>
                   {owned && <p className="text-[11px] font-bold text-muted">{s.blurb}</p>}

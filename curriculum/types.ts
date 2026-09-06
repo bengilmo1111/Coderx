@@ -1,6 +1,7 @@
 import type { Program, Stmt } from '@/lang/types';
 import type { WorldState } from '@/runtime/world';
 import type { SkillId } from './skills';
+import type { Prediction } from './predict';
 
 export interface GoalContext {
   world: WorldState;
@@ -61,6 +62,14 @@ export interface Level {
   variable?: string;
   /** Free play: no scoring, no unlocking, no winning, nothing to get wrong. */
   sandbox?: boolean;
+  /**
+   * What to ask him to guess before he presses Run.
+   *
+   * Usually left off: `predictionFor` in `./predict` derives one from the board
+   * for any level that ends in a count of binned rubbish, which is most of them.
+   * Declare it where the interesting guess is something else.
+   */
+  predict?: Prediction;
   skills: SkillId[];
   /** Bolt's handwritten ladder. Also the fallback when the AI is unavailable. */
   hints: string[];

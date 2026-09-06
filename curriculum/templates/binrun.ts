@@ -65,17 +65,27 @@ const VILLAINS = [
   },
 ] as const;
 
+/**
+ * Titles that are not already a level's.
+ *
+ * "The Long Street" used to be here and is also Chapter 1 Page 2, so HQ offered
+ * two different capers with the same name — confusing on the shelf and worse in
+ * a test. There is a check for this now.
+ */
 const FLAVOUR_TITLES = [
   'Bin Day Again',
-  'The Long Street',
   'Somebody Else Did This',
   'A Street of Hats',
+  'The Usual Suspects',
 ] as const;
 
 function titlesFor(n: number, k: number): string[] {
   if (k === 1) return [...FLAVOUR_TITLES, 'Bin After Bin After Bin'];
   const ordinal = ORD[k].replace(/^./, (c) => c.toUpperCase());
-  return [`${NUM[n]} Lots of ${NUM[k]}`, `Every ${ordinal} Square`, ...FLAVOUR_TITLES];
+  // "Three Lots of Two" is Chapter 1 Page 3 — the level this template was
+  // generalised from — so the numeric title says the same thing a different
+  // way, and says the two numbers that actually matter while it is at it.
+  return [`${NUM[n]} Bins, ${NUM[k]} Apart`, `Every ${ordinal} Square`, ...FLAVOUR_TITLES];
 }
 
 function skillsFor(k: number): SkillId[] {

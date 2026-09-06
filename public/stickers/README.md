@@ -1,8 +1,8 @@
 # Sticker art (optional)
 
 The sticker wall is the prize. Henry said what motivates him is levels and
-collecting, and right now the collection is nineteen emoji on a wall — which is a
-weaker reward than nineteen things somebody drew for him. This is the single
+collecting, and right now the collection is two dozen emoji on a wall — which is
+a weaker reward than two dozen things somebody drew for him. This is the single
 biggest remaining art win in the app.
 
 ## Dropping art in
@@ -21,8 +21,8 @@ public/stickers/dragon-scale.png  →  Dragon Scale
 - **Square**, 256x256. Drawn at 48px on the wall and 44px in the reward pop-up,
   so detail below that is wasted weight.
 - **Transparent PNG.** They sit on cream paper cards.
-- Under ~40KB each. There are nineteen; the whole set wants to stay smaller than
-  the cast.
+- Under ~40KB each. There are nineteen stickers and five crew badges; the whole
+  set wants to stay smaller than the cast.
 - These are **stickers**, so the house look is a thick pale outline around the
   shape — like something peeled off a sheet — rather than a picture in a frame.
   Slightly wonky and hand-cut beats neat.
@@ -61,6 +61,23 @@ red `#e84a5f`, purple `#8e5ccb`, orange `#f28c45`, ink `#15314b`.
 | `nested-loop.png` | 🌀 | **A Loop Inside a Loop** | Most grown-ups find this hard. |
 | `own-command.png` | 🏗️ | **Your Own Command** | You invented a word and the computer learned it. |
 | `rebuilt.png` | 🤖 | **Fully Rebuilt** | Now only 12% toaster. |
+
+### The crew badges
+
+Same contract, drawn the same way, but they are a different kind of thing and it
+is worth knowing which you are drawing. A story sticker above is a joke about one
+particular moment in one particular caper. A crew badge is earned by a pattern
+across many of them — five capers with a loop in, twenty-five lines typed by
+hand — so it wants to look like something awarded rather than something peeled
+off the scene of a crime. A cloth patch or an enamel pin, not a snapshot.
+
+| File | Emoji now | Name | Blurb |
+|---|---|---|---|
+| `loop-wrangler.png` | 🔁 | **Loop Wrangler** | Five capers, and the boring bit did itself every time. |
+| `own-two-hands.png` | 🖐️ | **Own Two Hands** | Twenty-five lines typed with actual fingers. |
+| `comeback-kid.png` | 🪃 | **Comeback Kid** | You went back to one that had beaten you, and beat it. |
+| `clean-sweep.png` | 🧹 | **Clean Sweep** | Three capers, no help asked for. Not that asking costs anything. |
+| `street-regular.png` | 🏘️ | **Kea Street Regular** | Ten capers done. The neighbours know your dog by name. |
 
 ## Also worth drawing, in priority order
 

@@ -30,6 +30,8 @@ interface TutorRequest {
   code: string;
   error?: string;
   hintsUsed?: number;
+  /** What he said he learned, when he had a go before asking. */
+  choice?: string;
 }
 
 export interface TutorResponse {
@@ -63,6 +65,7 @@ function systemPrompt(
   intent: Intent,
   hintsUsed: number,
   sim: Simulation,
+  choice?: string,
 ) {
   const commands = level.bricks.join(', ');
   const rung = Math.min(hintsUsed, level.hints.length - 1);
@@ -115,11 +118,11 @@ function systemPrompt(
     '',
     ...guidance,
     '',
-    intentBrief(intent),
+    intentBrief(intent, choice),
   ].join('\n');
 }
 
-function intentBrief(intent: Intent): string {
+function intentBrief(intent: Intent, choice?: string): string {
   switch (intent) {
     case 'stuck':
       return 'HE TAPPED: "I\'m stuck". Nudge him toward the next step. Do not solve it.';
@@ -135,7 +138,14 @@ function intentBrief(intent: Intent): string {
     case 'learned':
       return [
         'HE TAPPED: "What did I just learn?".',
-        'Name the ONE programming idea he used and why it is useful, in plain words. Be proud of him.',
+        ...(choice
+          ? [
+              `BEFORE ASKING YOU, HE HAD A GO HIMSELF AND SAID: "${choice}".`,
+              'Answer HIS answer. If he is right, say so plainly and add one thing he might not have noticed.',
+              'If he is not, do not say wrong: tell him what that one is, then name the one he actually used.',
+              'Having a go and missing is worth more than not having a go, so never make the guess feel costly.',
+            ]
+          : ['Name the ONE programming idea he used and why it is useful, in plain words. Be proud of him.']),
         'This is NOT a request for help: do not hint at what is missing, do not mention the goal, do not suggest a change.',
       ].join(' ');
   }
@@ -210,7 +220,8 @@ export async function POST(request: Request) {
   // Run his code for real before asking for a hint, so Bolt is grounded in what
   // actually happened rather than guessing at a board it cannot see.
   const sim = simulate(level, code);
-  const cacheKey = `${body.levelId}|${intent}|${hintsUsed}|${code}|${body.error ?? ''}`;
+  const choice = body.choice ? String(body.choice).slice(0, 120) : undefined;
+  const cacheKey = `${body.levelId}|${intent}|${hintsUsed}|${code}|${body.error ?? ''}|${choice ?? ''}`;
   const cached = cache.get(cacheKey);
   if (cached) return NextResponse.json({ text: cached, source: 'ai' } satisfies TutorResponse);
 
@@ -234,7 +245,7 @@ export async function POST(request: Request) {
         max_tokens: 120,
         temperature: 0.7,
         messages: [
-          { role: 'system', content: systemPrompt(level, intent, hintsUsed, sim) },
+          { role: 'system', content: systemPrompt(level, intent, hintsUsed, sim, choice) },
           {
             role: 'user',
             content: [

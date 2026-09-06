@@ -283,6 +283,15 @@ describe('the maths is really in there', () => {
     }
   });
 
+  it('never borrows a hand-written level\'s name', () => {
+    // Two different capers called "The Long Street" is confusing on the shelf
+    // and ambiguous everywhere else.
+    const taken = new Set(ALL_LEVELS.map((l) => l.title));
+    for (const { id, level } of BINRUNS) {
+      expect(taken.has(level.title), `${id} reuses the title "${level.title}"`).toBe(false);
+    }
+  });
+
   it('varies, so two capers in a band are not the same caper', () => {
     const band2 = BINRUNS.filter(({ id }) => parseGeneratedId(id)!.params.band === 2);
     expect(new Set(band2.map((x) => x.level.briefing)).size).toBeGreaterThan(1);

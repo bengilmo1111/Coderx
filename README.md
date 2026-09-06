@@ -79,6 +79,80 @@ can use. That taxonomy is also the extension point: adding maths or reading
 
 ---
 
+## Teaching, not just containing practice
+
+Three mechanics, all of them older than this app and none of them invented here.
+
+### Call It — say what will happen, before you find out
+
+Committing to a guess before seeing the answer improves what you take from the
+answer, and it does so **even when the guess is wrong**, provided the reveal
+follows immediately. Here the reveal *is* the run: `runtime/run.ts` already
+computes the final world, so the truth costs nothing and can never disagree with
+what he watches happen.
+
+The question is derived rather than written. Every hand-written level either
+counts binned rubbish, fights something with a health bar, or fetches a part —
+so `curriculum/predict.ts` covers all eighteen, and every generated caper, with
+no content authored. A level can still declare its own.
+
+**Rewarded for calling it, never for being right.** A bonus for accuracy is a
+penalty for a wrong guess wearing a hat, and this is a boy who has already
+decided he is behind. Being wrong pays exactly the same, and the near miss gets
+the warmest line of the three. He is asked **once per caper**, not once per edit
+— predicting is worth doing when he has just built something and has a real
+hypothesis; asking again after every tweak turns Run into a toll gate.
+
+### A scaffold that comes off
+
+Studying a worked example and then *completing* a half-finished one beats a
+blank page for someone new to an idea — and then gets in the way once it has
+clicked. `makeStarter` had been wired in and returning an empty program on all
+nineteen levels since Build 1, and `typedLines` was read in four places, every
+one of them scoring or advising a parent. Nothing faded.
+
+`curriculum/fade.ts` derives the head start from the level's own reference, so
+it needs nothing authored, and `progress/scaffold.ts` picks how much: nearly
+finished, then the shape with an empty body, then the blank page, then the blank
+page with the keyboard already open. It promotes readily and **never demotes** —
+being handed more help than yesterday reads as "we decided you could not do it".
+
+Two things that had to be learned by running it rather than reasoning about it:
+
+- **Not everyone gets one.** A boy on his very first caper has not met the idea
+  yet, and handing him four of level one's five lines makes the level where he
+  first tells a dog what to do a level where he does almost nothing. The fade is
+  for generated capers, which have no authored progression, and for a
+  hand-written level that has genuinely beaten him. A completion problem is a
+  good answer to being stuck and a poor answer to being new.
+- **The cursor has to land inside the loop.** Left to default, his first tap
+  went *after* the closing brace and the level errored on a move that looked
+  perfectly sensible — worse than an empty page.
+
+A starter is proved, not assumed: it is run, and statements are taken away until
+it neither solves the level nor **runs away**. That second one is not
+hypothetical — Chapter 2 is built on `repeatUntil dragonBeaten()`, and an empty
+one never beats the dragon, so it spins to the step budget and looks broken
+before he has touched it.
+
+### He answers before Bolt does
+
+"What did I learn?" used to be Bolt explaining and Henry listening, which is the
+weaker half of the trade. Now it offers three plausible ideas, he picks, and
+Bolt answers *his* answer — warmly if he missed, because having a go and missing
+is worth more than not having a go. Only `code.*` ideas ever appear: the maths
+and the reading are the quiet half of coderX, and a multiple choice offering
+"Times tables (groups of)" would end that in one tap.
+
+### And one thing that was quietly broken
+
+`lastCode` had been written on every edit, merged across devices and synced
+since Build 2 — and never once read back. The comment above it promised to keep
+his work if he wandered off. It didn't. It does now, and his own saved code
+always wins over any head start.
+
+---
+
 ## Capers that did not exist until he asked for one
 
 Eighteen hand-written levels is the whole curriculum, and Henry finished Chapter

@@ -18,6 +18,7 @@ import { runProgram, type RunResult } from '@/runtime/run';
 import { Stage } from '@/components/Stage';
 import { RunBar } from '@/components/RunBar';
 import { BoltPanel, type Intent } from '@/components/BoltPanel';
+import { CallIt } from '@/components/CallIt';
 import { RewardPanel } from '@/components/RewardPanel';
 
 import { usePlayback } from '@/lib/usePlayback';
@@ -26,6 +27,10 @@ import { sfx, loadMutePreference, setMuted } from '@/lib/sound';
 import { bankWordsIn, flush, observe } from '@/lib/observe';
 
 import { getLevel, nextLevelId } from '@/curriculum/levels';
+import { callItVerdict, predictionFor } from '@/curriculum/predict';
+import { fadeStarter, RUNGS, starterCursor } from '@/curriculum/fade';
+import { parseGeneratedId } from '@/curriculum/template';
+import { scaffoldRung } from '@/progress/scaffold';
 import { awardsFor, rankFor, type Award } from '@/progress/xp';
 import { addMinutes, collect, collectCard, levelProgress, recordSkillAttempt, setLevelProgress } from '@/progress/store';
 import { newBadges } from '@/progress/badges';
@@ -75,6 +80,9 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   const [tookDare, setTookDare] = useState(false);
   const [awards, setAwards] = useState<Award[] | null>(null);
   const [earnedBadge, setEarnedBadge] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [called, setCalled] = useState<string | null>(null);
+  const [verdict, setVerdict] = useState<string | null>(null);
   const [muted, setMutedState] = useState(false);
   const [banner, setBanner] = useState<CoderXError | null>(null);
 
@@ -84,8 +92,22 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   /** Latest snapshot, so the abandon record on unmount does not re-run the effect. */
   const latest = useRef({ ran: false, won: false, size: 0, hintsUsed: 0 });
   const abandonRecorded = useRef(false);
+  /**
+   * Has he been asked to call it on this visit?
+   *
+   * Once per caper, not once per edit. Predicting is worth doing when he has
+   * just built something and has a real hypothesis about it; asking again
+   * after every tweak turns Run into a toll gate and the habit into a tax.
+   */
+  const asked = useRef(false);
+  /** Has the page been filled in from his saved work or a head start yet? */
+  const seeded = useRef(false);
   const world = useMemo(() => level.makeWorld(), [level]);
   const cast = useMemo(() => level.commandable ?? ['sniff'], [level]);
+  /** What to ask him to guess, derived from the board. Null means don't ask. */
+  const prediction = useMemo(() => predictionFor(level), [level]);
+  /** His code as text. Doubles as the identity of "this version" for Call It. */
+  const source = printSource(program);
   /** Commands he has defined in this program — each becomes a brick of its own. */
   const defined = useMemo(() => definedNames(program), [program]);
 
@@ -147,12 +169,81 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     setProgramRaw(next);
     setRunResult(null);
     setBanner(null);
+    setVerdict(null);
     settled.current = false;
   }, [program]);
 
-  // Keep his work if he wanders off and comes back.
+  /**
+   * What is on the page when he arrives.
+   *
+   * Deferred to an effect rather than done in `useState`, because progress is
+   * local-first: the server has no localStorage, so the first render is always
+   * the empty state and his real game arrives a tick later. Seeding from it any
+   * earlier would give every child the beginner's head start.
+   *
+   * HIS OWN SAVED CODE WINS. `lastCode` has been written on every edit, merged
+   * across devices and synced since Build 2, and never once read back — the
+   * comment here used to promise it kept his work if he wandered off, and it
+   * did not. It does now.
+   *
+   * Failing that, a head start sized to how sure of this he already is: new to
+   * loops and he arrives to one nearly finished and completes it; once it has
+   * landed, the blank page every level used to hand everyone regardless.
+   */
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || seeded.current) return;
+    seeded.current = true;
+
+    const previous = levelProgress(state, level.id).lastCode;
+    if (previous.trim()) {
+      try {
+        const restored = parse(previous);
+        setProgramRaw(restored);
+        setSelection(starterCursor(restored));
+        return;
+      } catch {
+        // Saved code that no longer parses is not worth losing the level over.
+      }
+    }
+    if (level.makeStarter().length) return; // a level that ships its own wins
+
+    /**
+     * Who gets a head start.
+     *
+     * NOT everyone, and finding that out is why this is worth writing down.
+     * Faded worked examples help someone who has met the idea before; a boy on
+     * his very first caper has not, and handing him four of its five lines
+     * would mean the level where he first tells a dog what to do is a level
+     * where he does almost nothing. Chapter 1 is already a designed ramp with
+     * its own hint ladder — it does not need a second one.
+     *
+     * So the fade is for the two places nothing else is scaffolding him:
+     * generated capers, which have no authored progression at all, and a
+     * hand-written level that has genuinely beaten him. A completion problem is
+     * a good answer to being stuck and a poor answer to being new.
+     */
+    const saved = levelProgress(state, level.id);
+    const beaten = !saved.completed && saved.attempts >= 3;
+    if (!parseGeneratedId(level.id) && !beaten) return;
+
+    const rung = scaffoldRung(state, level.skills);
+    const starter = fadeStarter(level, rung);
+    observe({
+      kind: 'scaffold_rung',
+      levelId: level.id,
+      skillIds: level.skills,
+      payload: { rung, given: countStmts(starter) },
+    });
+    if (rung >= RUNGS.keyboard) setTyping(true);
+    if (starter.length) {
+      setProgramRaw(starter);
+      setSelection(starterCursor(starter));
+    }
+  }, [ready, state, level]);
+
+  // Keep his work if he wanders off and comes back — read back above.
+  useEffect(() => {
+    if (!ready || !seeded.current) return;
     update((p) => setLevelProgress(p, level.id, { lastCode: printSource(program) }));
   }, [program, ready, level.id, update]);
 
@@ -264,6 +355,15 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     }
   };
 
+  const go = () => {
+    settled.current = false;
+    setBanner(null);
+    setAwards(null);
+    const result = runProgram(program, level.makeWorld(), { commandable: cast });
+    setRunResult(result);
+    sfx.step();
+  };
+
   const run = () => {
     const hole = firstHole(program);
     if (hole) {
@@ -272,12 +372,37 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       setPicker({ stmtId: hole.stmtId, index: hole.index, slot: slotFor(program, hole.stmtId, hole.index) });
       return;
     }
-    settled.current = false;
-    setBanner(null);
-    setAwards(null);
-    const result = runProgram(program, level.makeWorld(), { commandable: cast });
-    setRunResult(result);
-    sfx.step();
+    // Ask for a call once per version of his code, never on a re-run: watching
+    // it again is not a new guess, and being asked twice would make Run feel
+    // like a toll gate.
+    if (prediction && !asked.current) {
+      setAsking(true);
+      return;
+    }
+    go();
+  };
+
+  /** He made a call. Record it, then run — the reveal is the run itself. */
+  const callIt = (choice: string) => {
+    asked.current = true;
+    setCalled(choice);
+    observe({
+      kind: 'prediction',
+      levelId: level.id,
+      skillIds: level.skills,
+      payload: { called: choice, options: prediction?.options.length ?? 0 },
+    });
+    setAsking(false);
+    go();
+  };
+
+  const skipCall = () => {
+    // Skipping still counts as being asked, so declining once is respected
+    // for the rest of the caper rather than re-offered on the next run.
+    asked.current = true;
+    setCalled(null);
+    setAsking(false);
+    go();
   };
 
   // Auto-play a fresh run.
@@ -320,6 +445,26 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       setBanner(runResult.error);
     }
 
+    /**
+     * The reveal, which is just the run having happened.
+     *
+     * Scored on whether he CALLED it, never on whether he was right. A bonus
+     * for being right is a penalty for being wrong wearing a hat, and a boy who
+     * stops guessing has stopped predicting — which was the entire point.
+     */
+    let calledIt = false;
+    if (called && prediction) {
+      const actual = prediction.from({ world: runResult.finalWorld, saids: runResult.saids });
+      calledIt = true;
+      setVerdict(callItVerdict(called, actual));
+      observe({
+        kind: 'prediction',
+        levelId: level.id,
+        skillIds: level.skills,
+        payload: { called, actual, correct: called === actual, resolved: true },
+      });
+    }
+
     // Worked out here rather than inside the updater: React invokes updaters
     // more than once, so they have to stay pure.
     const earned = won
@@ -331,6 +476,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
           hintsUsed,
           tookDare,
           firstTime: !before.completed,
+          calledIt,
         })
       : null;
 
@@ -414,6 +560,9 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     }
     arrivedAt.current = Date.now();
     abandonRecorded.current = false;
+    asked.current = false;
+    setCalled(null);
+    setVerdict(null);
     setAwards(null);
     setEarnedBadge(null);
     settled.current = false;
@@ -421,9 +570,11 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     setHintsUsed(0);
     setTypedLines(0);
     setTookDare(false);
-    setProgramRaw(level.makeStarter());
+    const authored = level.makeStarter();
+    const fresh = authored.length ? authored : fadeStarter(level, scaffoldRung(state, level.skills));
+    setProgramRaw(fresh);
     setHistory([]);
-    setSelection(null);
+    setSelection(starterCursor(fresh));
   };
 
   const onAsked = (intent: Intent) => {
@@ -444,7 +595,6 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   };
 
   const runningStmtId = playback.playing && runResult ? (runResult.frames[playback.index]?.stmtId ?? null) : null;
-  const source = printSource(program);
   const rank = rankFor(state.xp);
 
 
@@ -456,7 +606,14 @@ export function PlayScreen({ levelId }: { levelId: string }) {
         </Link>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[11px] font-black uppercase tracking-wide opacity-50">
-            {level.sandbox ? 'Free play' : `Chapter ${level.chapter} · Page ${level.index}`}
+            {level.sandbox
+              ? 'Free play'
+              : /* Generated capers sit outside the chapters, so they have no
+                   number — and "Chapter 0 · Page 0" reads like a bug to an
+                   eight-year-old, because it is one. */
+                parseGeneratedId(level.id)
+                ? "Today's caper"
+                : `Chapter ${level.chapter} · Page ${level.index}`}
           </p>
           <h1 className="truncate text-base font-black leading-tight">{level.title}</h1>
         </div>
@@ -523,6 +680,14 @@ export function PlayScreen({ levelId }: { levelId: string }) {
               >
                 ✕
               </button>
+            </div>
+          ) : verdict ? (
+            /* The reveal shares the goal line's space rather than taking any of
+               its own — the code list is already tight at 390x660, and the one
+               thing this screen may never do is squeeze his code. */
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-sm">🤖</span>
+              <p className="min-w-0 flex-1 truncate text-[13px] font-bold">{verdict}</p>
             </div>
           ) : (
             <div className="flex items-center gap-2 px-1">
@@ -717,10 +882,20 @@ export function PlayScreen({ levelId }: { levelId: string }) {
         </div>
       )}
 
+      {asking && prediction && (
+        <CallIt
+          question={prediction.question}
+          options={prediction.options}
+          onCall={callIt}
+          onSkip={skipCall}
+        />
+      )}
+
       {awards && (
         <RewardPanel
           awards={awards}
           sticker={level.reward.sticker ?? earnedBadge ?? undefined}
+          verdict={verdict}
           bridgeCard={level.bridgeCard}
           nextHref={nextLevelId(level.id) ? `/play/${nextLevelId(level.id)}` : undefined}
           onReplay={replay}

@@ -1,7 +1,8 @@
 # The memory loop (Build 2)
 
-**Status:** design note, not built. Depends on Supabase, which arrives with
-cross-device sync in Build 2.
+**Status:** step 2 of the build order below is live — coderX is recording, and
+nothing reads it back. Steps 3-5 are still a design note. The clock the whole
+plan depends on started when the first observation landed.
 
 ## What it's for
 
@@ -143,15 +144,20 @@ This is a behavioural profile of a child, and it should be treated as such.
   erase the observations entirely.
 - Never send raw observation history to the tutor. Only the derived
   `notes_for_bolt` summary goes into a prompt, and it is capped and inspectable.
-- Free text he wrote in `say()` is his. Use it for interest signals in
-  aggregate; don't store it verbatim any longer than it takes to extract those,
-  and never echo it back to him through Bolt.
+- Free text he wrote in `say()` is his. Tapping a word from the bank and typing
+  one arrive through the same slot, so telling them apart could not be left to
+  care: `bankWordsIn` in `lib/observe.ts` keeps only words we wrote ourselves,
+  and `tests/observe.test.ts` proves his own never reach the queue. Never echo
+  anything he wrote back to him through Bolt.
 
 ## Build order
 
 1. Supabase, profiles, emoji password, sync — this can't start before that.
-2. Write `observations` from the events Build 1 already produces. Change nothing
-   about the game. Just watch, for a couple of weeks.
+2. ~~Write `observations` from the events Build 1 already produces. Change nothing
+   about the game. Just watch, for a couple of weeks.~~ **Done.** `lib/observe.ts`
+   is wired into `PlayScreen`: attempts, bricks reached for, hints and how fast
+   they were asked for, dares taken, replays, abandons, typed lines, words tapped
+   from the bank, modes used, commands defined. Nothing reads any of it.
 3. Build the rollup and the parent-facing read. **Check it against what Ben
    already knows about his own son** — if the profile disagrees with the parent,
    the profile is wrong, and that's the cheapest possible time to find out.

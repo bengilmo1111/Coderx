@@ -262,8 +262,11 @@ streak must not become one more thing he is failing at.
 
 ## What's next
 
-Cross-device sync is **built** — see above. What is recorded but not yet used
-is the **memory loop** — see [`docs/memory-loop.md`](docs/memory-loop.md).
+Cross-device sync is **built**, and so is the recording underneath the **memory
+loop** — see [`docs/memory-loop.md`](docs/memory-loop.md). coderX now writes down
+what he does and deliberately does nothing with it: attempts, the bricks he
+reaches for, how fast he asks for a hint, the dares he takes, the levels he
+replays and the ones he closes. Reading it back comes later, on purpose.
 coderX watches what he likes, avoids, finds easy and finds hard, and feeds that
 back into what the game offers next and what Bolt already knows before he asks.
 The design note leads with the trap, because a stored conclusion that "he's bad

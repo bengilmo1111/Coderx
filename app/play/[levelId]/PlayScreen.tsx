@@ -319,7 +319,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   return (
     <main className="flex h-[100dvh] flex-col overflow-hidden">
       <header className="flex items-center gap-2 border-b-[3px] border-ink px-3 py-2">
-        <Link href="/" className="chunk flex items-center bg-white px-3">
+        <Link href="/" className="chunk flex items-center bg-paper px-3">
           ←
         </Link>
         <div className="min-w-0 flex-1">
@@ -335,7 +335,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
             setMuted(next);
             setMutedState(next);
           }}
-          className="chunk bg-white px-3"
+          className="chunk bg-paper px-3"
           aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
         >
           {muted ? '🔇' : '🔊'}
@@ -363,7 +363,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
           >
             <Stage world={world} frames={runResult?.frames ?? []} index={playback.index} t={playback.t} />
             {world.h > 1 && (
-              <span className="pointer-events-none absolute bottom-1 right-1 rounded-md border-2 border-ink bg-white/85 px-1.5 text-[10px] font-black opacity-70">
+              <span className="pointer-events-none absolute bottom-1 right-1 rounded-md border-2 border-ink bg-paper/85 px-1.5 text-[10px] font-black opacity-70">
                 tap to zoom
               </span>
             )}
@@ -399,7 +399,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
               <button
                 type="button"
                 onClick={() => setShowBrief(true)}
-                className="chunk min-h-9 bg-white px-2 text-xs"
+                className="chunk min-h-9 bg-paper px-2 text-xs"
                 title="Read the case file again"
               >
                 📄
@@ -429,21 +429,21 @@ export function PlayScreen({ levelId }: { levelId: string }) {
               </span>
             )}
             <span className="flex-1" />
-            <button type="button" onClick={() => setShowBolt(true)} className="chunk min-h-9 bg-white px-2 text-xs">
+            <button type="button" onClick={() => setShowBolt(true)} className="chunk min-h-9 bg-paper px-2 text-xs">
               🤖 Bolt
             </button>
-            <button type="button" onClick={() => setTyping((v) => !v)} className="chunk min-h-9 bg-white px-2 text-xs" title="Type a line yourself for bonus XP">
+            <button type="button" onClick={() => setTyping((v) => !v)} className="chunk min-h-9 bg-paper px-2 text-xs" title="Type a line yourself for bonus XP">
               ⌨️ +{15}
             </button>
-            <button type="button" onClick={undo} disabled={!history.length} className="chunk min-h-9 bg-white px-2 text-xs">
+            <button type="button" onClick={undo} disabled={!history.length} className="chunk min-h-9 bg-paper px-2 text-xs">
               ↶
             </button>
             {selection && (
               <>
-                <button type="button" onClick={() => setProgram(moveStmt(program, selection.stmtId, -1))} className="chunk min-h-9 bg-white px-2 text-xs">
+                <button type="button" onClick={() => setProgram(moveStmt(program, selection.stmtId, -1))} className="chunk min-h-9 bg-paper px-2 text-xs">
                   ↑
                 </button>
-                <button type="button" onClick={() => setProgram(moveStmt(program, selection.stmtId, 1))} className="chunk min-h-9 bg-white px-2 text-xs">
+                <button type="button" onClick={() => setProgram(moveStmt(program, selection.stmtId, 1))} className="chunk min-h-9 bg-paper px-2 text-xs">
                   ↓
                 </button>
                 <button
@@ -474,7 +474,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
                   autoCorrect="off"
                   className="panel min-w-0 flex-1 px-2 py-2 font-[family-name:var(--font-code)] text-sm"
                 />
-                <button type="button" onClick={addTypedLine} className="chunk bg-emerald-400 px-3 text-sm">
+                <button type="button" onClick={addTypedLine} className="chunk bg-hill px-3 text-sm">
                   Add
                 </button>
               </div>
@@ -493,7 +493,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
                         sfx.tap();
                         setTypedDraft(b.example);
                       }}
-                      className="chunk min-h-8 bg-white px-2 font-[family-name:var(--font-code)] text-[12px]"
+                      className="chunk min-h-8 bg-paper px-2 font-[family-name:var(--font-code)] text-[12px]"
                     >
                       {b.example}
                     </button>
@@ -525,7 +525,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
           <div className="min-h-0 flex-1" onClick={(e) => e.stopPropagation()}>
             <Stage world={world} frames={runResult?.frames ?? []} index={playback.index} t={playback.t} />
           </div>
-          <button type="button" onClick={() => setEnlarged(false)} className="chunk mt-3 bg-white py-3 text-lg">
+          <button type="button" onClick={() => setEnlarged(false)} className="chunk mt-3 bg-paper py-3 text-lg">
             Back to the code
           </button>
         </div>
@@ -561,7 +561,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
               <span>🎯</span>
               <p className="text-sm font-black">{level.goalText}</p>
             </div>
-            <button type="button" onClick={() => setShowBrief(false)} className="chunk w-full bg-emerald-400 py-3 text-lg">
+            <button type="button" onClick={() => setShowBrief(false)} className="chunk w-full bg-hill py-3 text-lg">
               On it
             </button>
           </div>
@@ -578,7 +578,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
               hintsUsed={hintsUsed}
               onAsked={onAsked}
             />
-            <button type="button" onClick={() => setShowBolt(false)} className="chunk mt-2 w-full bg-white py-2">
+            <button type="button" onClick={() => setShowBolt(false)} className="chunk mt-2 w-full bg-paper py-2">
               Close
             </button>
           </div>

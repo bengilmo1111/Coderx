@@ -85,7 +85,7 @@ export function BrickBar({
               e.preventDefault();
               onShowHelp(brick);
             }}
-            className={`chunk shrink-0 px-3 text-white ${CATEGORY_STYLE[brick.category].className} font-[family-name:var(--font-code)] text-[15px]`}
+            className={`chunk shrink-0 px-3 text-ink ${CATEGORY_STYLE[brick.category].className} font-[family-name:var(--font-code)] text-[15px]`}
           >
             {brick.label}
           </button>

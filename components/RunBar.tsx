@@ -24,7 +24,7 @@ export function RunBar({
         type="button"
         disabled={!hasCode}
         onClick={playback.playing ? onStop : onRun}
-        className={`chunk flex-1 py-3 text-lg ${playback.playing ? 'bg-danger text-white' : 'bg-emerald-400'}`}
+        className={`chunk flex-1 py-3 text-lg ${playback.playing ? 'bg-danger text-white' : 'bg-hill'}`}
       >
         {playback.playing ? '■ Stop' : '▶︎ Run it'}
       </button>
@@ -33,14 +33,14 @@ export function RunBar({
         disabled={!hasCode}
         onClick={playback.stepOnce}
         title="One statement at a time"
-        className="chunk bg-white px-4"
+        className="chunk bg-paper px-4"
       >
         ⏭
       </button>
       <select
         value={playback.speed}
         onChange={(e) => playback.setSpeed(Number(e.target.value))}
-        className="chunk bg-white px-2 text-sm"
+        className="chunk bg-paper px-2 text-sm"
         aria-label="Speed"
       >
         {SPEEDS.map((s) => (

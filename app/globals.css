@@ -1,17 +1,49 @@
 @import "tailwindcss";
 
 /*
- * coderX house style: comic book. Fat black outlines, flat bright colour,
- * paper-coloured ground, everything slightly wonky. Bold enough to feel like a
- * game rather than a worksheet, calm enough to sit next to real code.
+ * coderX house style, borrowed from gilmore.games.
+ *
+ * The family look: a handmade game shed somewhere between a Wellington back
+ * garden and an adventure map. Thick deep-blue outlines, flat bright colour on
+ * paper, irregular corners, everything sitting a degree or two off square, and
+ * hard shadows dropped straight down as though the whole page were cut out and
+ * laid on a table.
+ *
+ * One deliberate departure from the directory site: the illustrated landscape
+ * belongs on the welcoming screens only. Behind the play screen it would be
+ * decoration competing with the thing Henry is actually reading, which is his
+ * own code, on a phone, at 390px wide.
  */
 
 @theme {
-  --color-paper: #fdf6e3;
-  --color-ink: #12100e;
-  --color-pop: #ffd23f;
-  --color-danger: #e5484d;
-  --font-comic: ui-rounded, "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  /* Sky and land */
+  --color-sky: #6ec5e9;
+  --color-sky-pale: #cdeef5;
+  --color-hill: #67b85a;
+  --color-hill-dark: #246b45;
+
+  /* Paper */
+  --color-paper: #fffdf6;
+  --color-cream: #fff8e7;
+
+  /* Ink. Deep blue rather than black — softer, and it makes the shadows read
+     as depth rather than as soot. */
+  --color-ink: #15314b;
+  --color-muted: #4d667b;
+  --color-shadow: #163b52;
+
+  /* Accents */
+  --color-sun: #ffd166;
+  --color-pop: #f5c84c;
+  --color-danger: #e84a5f;
+  --color-blue: #3ba7d8;
+  --color-purple: #8e5ccb;
+  --color-orange: #f28c45;
+
+  /* next/font sets --font-fredoka and --font-nunito on <html>. These theme
+     tokens must not reuse those names or they would refer to themselves. */
+  --font-comic: var(--font-nunito), "Nunito", ui-rounded, "Trebuchet MS", system-ui, sans-serif;
+  --font-display: var(--font-fredoka), "Fredoka", ui-rounded, "Trebuchet MS", system-ui, sans-serif;
   --font-code: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
 }
 
@@ -22,33 +54,41 @@ body {
 }
 
 body {
-  background: var(--color-paper);
+  background: var(--color-cream);
   color: var(--color-ink);
   font-family: var(--font-comic);
+  font-weight: 700;
   /* Stops iOS zooming when he taps a text field. */
   -webkit-text-size-adjust: 100%;
 }
 
-/* Halftone dot ground, used behind panels. */
+/* Halftone dot ground, used behind panels on the denser screens. */
 .dots {
-  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1.4px, transparent 1.5px);
+  background-color: var(--color-cream);
+  background-image: radial-gradient(rgba(21, 49, 75, 0.09) 1.4px, transparent 1.5px);
   background-size: 12px 12px;
 }
 
-/* The comic outline + hard drop shadow that everything in coderX wears. */
+/*
+ * The outline and hard shadow everything in coderX wears.
+ *
+ * The shadow drops straight down rather than diagonally, which is what makes
+ * the directory site's cards look like paper on a table rather than like a
+ * drop-shadow effect.
+ */
 .panel {
   border: 3px solid var(--color-ink);
-  border-radius: 14px;
-  box-shadow: 4px 4px 0 var(--color-ink);
-  background: #fffdf5;
+  border-radius: 18px 14px 20px 15px;
+  box-shadow: 0 6px 0 var(--color-shadow);
+  background: var(--color-paper);
 }
 
 .chunk {
   border: 3px solid var(--color-ink);
-  border-radius: 12px;
-  box-shadow: 3px 3px 0 var(--color-ink);
-  font-weight: 800;
-  transition: transform 80ms ease, box-shadow 80ms ease;
+  border-radius: 999px;
+  box-shadow: 0 5px 0 var(--color-shadow);
+  font-weight: 900;
+  transition: transform 120ms ease, box-shadow 120ms ease;
   /* Every interactive thing is thumb-sized. This is a phone-first app. */
   min-height: 46px;
   touch-action: manipulation;
@@ -56,30 +96,196 @@ body {
 }
 
 .chunk:active:not(:disabled) {
-  transform: translate(3px, 3px);
-  box-shadow: 0 0 0 var(--color-ink);
+  transform: translateY(5px);
+  box-shadow: 0 0 0 var(--color-shadow);
 }
 
 .chunk:disabled {
   opacity: 0.45;
-  box-shadow: 2px 2px 0 var(--color-ink);
+  box-shadow: 0 2px 0 var(--color-shadow);
+}
+
+/*
+ * A chunk that is a card rather than a pill.
+ *
+ * Most buttons here are pills, but anything carrying a picture above a caption
+ * — the cast picker, the sign-in faces — needs corners, or a long name like
+ * "Nan McSnap" spills out of the circle.
+ */
+.chunk-card {
+  border-radius: 18px 14px 20px 15px;
+}
+
+/* A card that lifts and straightens when you go near it. */
+.lift {
+  transform: rotate(var(--tilt, -0.6deg));
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+@media (hover: hover) {
+  .lift:hover,
+  .lift:focus-visible {
+    transform: translateY(-5px) rotate(0deg);
+    box-shadow: 0 12px 0 var(--color-shadow);
+  }
 }
 
 .title {
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
   transform: rotate(-1deg);
 }
 
+/* Focus that a child can actually see. */
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 4px solid var(--color-sun);
+  outline-offset: 3px;
+}
+
+/*
+ * The hand-painted sign, the yellow heading pill and the caper card — the
+ * three shapes the directory site is built out of.
+ */
+.sign {
+  border: 6px solid var(--color-ink);
+  border-radius: 42% 58% 45% 55% / 48% 44% 56% 52%;
+  background: var(--color-cream);
+  box-shadow: 0 11px 0 var(--color-shadow), 0 20px 34px rgba(18, 53, 91, 0.22);
+  transform: rotate(-1deg);
+}
+
+.pill-heading {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  border: 4px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-pop);
+  box-shadow: 0 7px 0 var(--color-shadow);
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-align: center;
+  transform: rotate(-1deg);
+}
+
+/* A level, as a card you can obviously press. */
+.caper {
+  --accent: var(--color-blue);
+  position: relative;
+  overflow: hidden;
+  border: 4px solid var(--color-ink);
+  border-radius: 26px 20px 28px 18px;
+  background: var(--color-paper);
+  box-shadow: 0 8px 0 var(--color-shadow);
+}
+/*
+ * The directory's cards are 300px tall and can carry a big corner blob. These
+ * are one-line rows, so the same blob swallowed the card. Small peek here, and
+ * the accent does its real work on the number badge.
+ */
+.caper::before {
+  content: "";
+  position: absolute;
+  top: -34px;
+  right: -30px;
+  width: 76px;
+  aspect-ratio: 1;
+  border: 4px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--accent);
+}
+.caper .badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 3rem;
+  height: 3rem;
+  border: 3px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--accent);
+  font-weight: 900;
+}
+.caper > * { position: relative; z-index: 1; }
+/*
+ * A locked caper still has to be readable. Translucent cream over dark green
+ * turned the title to mud, which the house art direction rules out — so the
+ * card stays solid paper and only its contents dim.
+ */
+.caper.locked { background: var(--color-cream); border-style: dashed; }
+.caper.locked .badge { background: #cfd8dd; }
+.caper.locked span { color: var(--color-muted); }
+
+/*
+ * Decorative landscape, behind the welcoming screens only.
+ *
+ * A fixed-height band at the top rather than a gradient stretched over the
+ * whole page: the level list runs long, and a percentage-positioned horizon
+ * pushed the hills somewhere below the third chapter where nobody saw them.
+ * Below the band the page is hill green, so paper cards sit on grass.
+ */
+.world {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  overflow-x: clip;
+  background: var(--color-hill-dark);
+}
+.world > .scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 640px;
+  z-index: -1;
+  overflow: clip;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    var(--color-sky) 0%,
+    var(--color-sky-pale) 60%,
+    var(--color-hill) 60%,
+    var(--color-hill-dark) 100%
+  );
+}
+.sun {
+  position: absolute; top: 40px; left: 7vw; width: clamp(64px, 9vw, 116px); aspect-ratio: 1;
+  border: 6px solid rgba(255, 255, 255, 0.45); border-radius: 50%; background: var(--color-sun);
+  box-shadow: 0 0 0 16px rgba(255, 209, 102, 0.18);
+}
+.cloud {
+  position: absolute; width: 170px; height: 44px; border-radius: 999px;
+  background: rgba(255, 248, 231, 0.92); animation: drift 28s ease-in-out infinite alternate;
+}
+.cloud::before, .cloud::after { content: ""; position: absolute; bottom: 0; border-radius: 50%; background: inherit; }
+.cloud::before { left: 26px; width: 72px; height: 72px; }
+.cloud::after { right: 24px; width: 94px; height: 94px; }
+.cloud-one { top: 84px; right: 6vw; transform: scale(0.72); }
+.cloud-two { top: 210px; left: -60px; transform: scale(0.5); animation-duration: 38s; }
+.mountains {
+  position: absolute; top: 250px; left: -4%; width: 108%; height: 150px; opacity: 0.42; background: #527f78;
+  clip-path: polygon(0 100%,0 74%,10% 35%,18% 68%,29% 18%,39% 64%,51% 28%,62% 72%,72% 38%,84% 66%,94% 24%,100% 58%,100% 100%);
+}
+.hill-back, .hill-front { position: absolute; left: -8%; width: 116%; border-radius: 50% 50% 0 0 / 26% 26% 0 0; }
+.hill-back { top: 330px; height: 320px; background: #7bc96d; transform: rotate(-2deg); }
+.hill-front { top: 420px; height: 360px; background: linear-gradient(160deg, var(--color-hill), var(--color-hill-dark)); transform: rotate(1deg); }
+.sheep {
+  position: absolute; font-size: clamp(24px, 3.5vw, 38px);
+  filter: drop-shadow(0 4px 0 rgba(22, 59, 82, 0.15)); animation: bob 4s ease-in-out infinite;
+}
+.sheep-one { top: 452px; left: 11vw; }
+.sheep-two { top: 520px; right: 8vw; animation-delay: -1.3s; }
+
+@keyframes drift { to { translate: 30px 6px; } }
+@keyframes bob { 50% { translate: 0 -5px; } }
+@keyframes float { 50% { transform: translateY(-8px) rotate(3deg); } }
+.float { animation: float 3s ease-in-out infinite; display: inline-block; }
+
 /* The running line, so he can watch the pointer move. */
 @keyframes pulse-line {
-  0%, 100% { background-color: rgba(255, 210, 63, 0.85); }
-  50% { background-color: rgba(255, 210, 63, 0.45); }
+  0%, 100% { background-color: rgba(245, 200, 76, 0.9); }
+  50% { background-color: rgba(245, 200, 76, 0.45); }
 }
-.running {
-  animation: pulse-line 700ms ease-in-out infinite;
-}
+.running { animation: pulse-line 700ms ease-in-out infinite; }
 
 @keyframes pop-in {
   from { transform: scale(0.7) rotate(-6deg); opacity: 0; }
@@ -95,5 +301,9 @@ body {
 .shake { animation: shake 320ms ease-in-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .running, .pop-in, .shake { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

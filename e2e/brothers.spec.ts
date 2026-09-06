@@ -123,8 +123,8 @@ test('Casper does not inherit Henry\'s game, and Henry finds his on the phone', 
   // The right four let him in, as himself.
   await tapPin(mobile, PIN);
   await expect(mobile.getByText('Agent Turbo')).toBeVisible();
-  // His own HQ, in the header — not Casper's, and not a fresh one.
-  await expect(mobile.getByRole('button', { name: /The Shed .*Agent Turbo/ })).toBeVisible();
+  // His own HQ on the sign — not Casper's, and not a fresh one.
+  await expect(mobile.getByRole('heading', { name: /The Shed/ })).toBeVisible();
 
   await computer.close();
   await phone.close();

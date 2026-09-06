@@ -102,10 +102,10 @@ export function GrownupsScreen() {
           />
           {error && <p className="mb-3 text-sm font-bold text-red-600">Not that one.</p>}
           <div className="flex gap-2">
-            <Link href="/" className="chunk flex items-center bg-white px-4">
+            <Link href="/" className="chunk flex items-center bg-paper px-4">
               ←
             </Link>
-            <button type="button" onClick={check} className="chunk flex-1 bg-emerald-400 py-3">
+            <button type="button" onClick={check} className="chunk flex-1 bg-hill py-3">
               Unlock
             </button>
           </div>
@@ -120,9 +120,9 @@ export function GrownupsScreen() {
 
   return (
     <main className="dots min-h-[100dvh] pb-12">
-      <header className="border-b-[3px] border-ink bg-white/70 px-4 py-3 backdrop-blur">
+      <header className="border-b-[3px] border-ink bg-paper/70 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <Link href="/" className="chunk flex items-center bg-white px-3">
+          <Link href="/" className="chunk flex items-center bg-paper px-3">
             ←
           </Link>
           <h1 className="title flex-1 text-2xl">How Henry&apos;s going</h1>
@@ -158,7 +158,7 @@ export function GrownupsScreen() {
                           {SKILLS[id].year && <span className="ml-1 text-xs opacity-45">{SKILLS[id].year}</span>}
                         </span>
                         <span className="h-2.5 w-24 overflow-hidden rounded-full border-2 border-ink">
-                          <span className="block h-full bg-emerald-400" style={{ width: `${pct}%` }} />
+                          <span className="block h-full bg-hill" style={{ width: `${pct}%` }} />
                         </span>
                         <span className="w-16 text-right text-xs font-bold opacity-55">
                           {successes}/{attempts}
@@ -234,7 +234,7 @@ export function GrownupsScreen() {
                     await signOut();
                     window.location.href = '/';
                   }}
-                  className="chunk bg-white px-3 text-sm"
+                  className="chunk bg-paper px-3 text-sm"
                 >
                   Sign out on this device
                 </button>

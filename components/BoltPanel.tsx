@@ -14,10 +14,10 @@ import { sfx } from '@/lib/sound';
 export type Intent = 'stuck' | 'broke' | 'sillier' | 'learned';
 
 const BUTTONS: { intent: Intent; label: string; cls: string }[] = [
-  { intent: 'stuck', label: "I'm stuck", cls: 'bg-amber-300' },
+  { intent: 'stuck', label: "I'm stuck", cls: 'bg-sun' },
   { intent: 'broke', label: 'Why did it break?', cls: 'bg-rose-300' },
   { intent: 'sillier', label: 'Make it sillier', cls: 'bg-fuchsia-300' },
-  { intent: 'learned', label: 'What did I learn?', cls: 'bg-sky-300' },
+  { intent: 'learned', label: 'What did I learn?', cls: 'bg-sky' },
 ];
 
 export function BoltPanel({

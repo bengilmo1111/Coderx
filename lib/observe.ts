@@ -25,7 +25,11 @@ export interface Observation {
     | 'typed_line'
     | 'word_chosen'
     | 'mode_used'
-    | 'brick_used';
+    | 'brick_used'
+    /** He said what would happen before pressing Run. */
+    | 'prediction'
+    /** How much of the answer was on the page when he arrived. */
+    | 'scaffold_rung';
   levelId?: string;
   skillIds?: string[];
   payload?: Record<string, unknown>;

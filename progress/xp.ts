@@ -46,6 +46,14 @@ export const BONUS = {
   dare: 20,
   /** Solved without asking Bolt. Small — asking for help must never feel costly. */
   unaided: 10,
+  /**
+   * Said what would happen before pressing Run.
+   *
+   * Paid for CALLING it, never for being right. Guessing before you find out is
+   * the habit worth building, and it works even when the guess is wrong — so
+   * rewarding accuracy here would punish exactly the thing we want more of.
+   */
+  calledIt: 15,
 } as const;
 
 export interface Award {
@@ -61,11 +69,14 @@ export function awardsFor(opts: {
   hintsUsed: number;
   tookDare: boolean;
   firstTime: boolean;
+  /** Did he say what would happen first? Not whether he was right. */
+  calledIt?: boolean;
 }): Award[] {
   const awards: Award[] = [{ label: opts.firstTime ? 'Level complete' : 'Replayed it', xp: opts.firstTime ? opts.base : Math.round(opts.base * 0.2) }];
   if (opts.typedLines > 0) awards.push({ label: `Typed ${opts.typedLines} line${opts.typedLines === 1 ? '' : 's'} yourself`, xp: BONUS.typedLine * opts.typedLines });
   if (opts.size <= opts.par) awards.push({ label: 'Tidy code', xp: BONUS.tidy });
   if (opts.hintsUsed === 0) awards.push({ label: 'No help needed', xp: BONUS.unaided });
   if (opts.tookDare) awards.push({ label: 'Took the dare', xp: BONUS.dare });
+  if (opts.calledIt) awards.push({ label: 'Called it first', xp: BONUS.calledIt });
   return awards;
 }

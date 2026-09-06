@@ -15,12 +15,15 @@ export function RewardPanel({
   awards,
   sticker,
   bridgeCard,
+  verdict,
   nextHref,
   onReplay,
 }: {
   awards: Award[];
   sticker?: string;
   bridgeCard?: string;
+  /** How his call turned out. Shown whether he got it right or not. */
+  verdict?: string | null;
   nextHref?: string;
   onReplay: () => void;
 }) {
@@ -33,6 +36,13 @@ export function RewardPanel({
       <div className="panel pop-in w-full max-w-md p-5">
         <h2 className="title mb-1 text-center text-3xl">Nailed it!</h2>
         <p className="mb-4 text-center text-4xl font-black">+{total} XP</p>
+
+        {verdict && (
+          /* The reveal, at the moment he feels good. Being wrong here has to
+             read as interesting rather than as a mark, or he stops guessing —
+             and a boy who stops guessing has stopped predicting. */
+          <p className="mb-3 text-center text-[13px] font-bold opacity-70">{verdict}</p>
+        )}
 
         <ul className="mb-4 space-y-1">
           {awards.map((a) => (
@@ -47,7 +57,13 @@ export function RewardPanel({
           <div className="panel mb-4 flex items-center gap-3 bg-pop/40 p-3">
             <Sticker id={badge.id} size={44} />
             <div>
-              <p className="text-xs font-black uppercase opacity-50">New sticker</p>
+              {/* A crew badge is a sticker underneath, but it is not the same
+                kind of thing: a story sticker is a joke about this moment, a
+                badge is something he earned across many. Saying so costs a
+                word and makes the shelf legible. */}
+            <p className="text-xs font-black uppercase opacity-50">
+              {badge.kind === 'crew' ? 'New badge' : 'New sticker'}
+            </p>
               <p className="font-black">{badge.name}</p>
               <p className="text-xs opacity-70">{badge.blurb}</p>
             </div>

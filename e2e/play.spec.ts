@@ -66,6 +66,22 @@ const goRight = (page: Page) => async () => {
 };
 
 /** Pick a number in the dialog. The same digits exist in his code, so scope it. */
+/**
+ * Press Run, and answer Bolt if he asks first.
+ *
+ * Call It interposes one tap on the first run of a caper, so every test that
+ * runs code goes through here rather than clicking Run directly — otherwise
+ * they would all be testing a screen he never actually sees.
+ */
+async function runIt(page: Page, call?: string) {
+  await page.getByRole('button', { name: /Run it/ }).click();
+  const sheet = page.getByTestId('call-it');
+  if (await sheet.isVisible({ timeout: 1500 }).catch(() => false)) {
+    if (call) await sheet.getByRole('button', { name: call, exact: true }).click();
+    else await sheet.getByRole('button', { name: 'Just run it' }).click();
+  }
+}
+
 async function pickNumber(page: Page, n: number) {
   await expect(page.getByRole('heading', { name: 'How many?' })).toBeVisible();
   await picker(page).getByRole('button', { name: String(n), exact: true }).click();
@@ -87,7 +103,7 @@ test('a level can be finished by tapping alone', async ({ page }) => {
   await expect(code).toContainText('move(sniff, right)');
   await expect(code).toContainText('drop(sniff)');
 
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
 
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Club card', { exact: false })).toBeVisible();
@@ -101,7 +117,7 @@ test('progress survives coming back later', async ({ page }) => {
   await tapBrick(page, 'move', goRight(page));
   await tapBrick(page, 'move', goRight(page));
   await tapBrick(page, 'drop');
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 20_000 });
 
   await page.goto('/');
@@ -119,7 +135,7 @@ test('an impossible move is a joke, not a crash', async ({ page }) => {
   // Walk Sniff straight into the fence on purpose.
   await page.getByRole('button', { name: 'move', exact: true }).click();
   await picker(page).getByRole('button', { name: '⬅︎' }).click();
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
 
   await expect(page.getByText(/bonked straight into the fence/)).toBeVisible({ timeout: 20_000 });
 });
@@ -185,7 +201,7 @@ test('a nested if inside a repeat can be built by tapping', async ({ page }) => 
   await expect(code).toContainText('repeat 5 {');
   await expect(code).toContainText('if rubbishHere(sniff) {');
 
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 30_000 });
 });
 
@@ -209,7 +225,7 @@ test('the code stays visible on a real phone, even with an error showing', async
   await tapBrick(page, 'move', goRight(page));
   await tapBrick(page, 'move', goRight(page));
 
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
   await expect(page.getByText(/grabbed some air|bonked/)).toBeVisible({ timeout: 20_000 });
 
   const scroller = page.getByTestId('code-scroll');
@@ -372,7 +388,7 @@ test('the dragon can be fought by tapping alone', async ({ page }) => {
   await page.getByRole('button', { name: 'attack', exact: true }).click();
 
   await expect(page.getByRole('list').first()).toContainText('attack(sniff)');
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
 });
 
@@ -404,7 +420,7 @@ test('a level that is about a variable says so when you skip it', async ({ page 
     await page.getByRole('button', { name: 'attack', exact: true }).click();
   }
 
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
   // ...but the level is about naming a number, so it says so and stays open.
   await expect(page.getByText(/about a particular trick/)).toBeVisible({ timeout: 25_000 });
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toHaveCount(0);
@@ -452,7 +468,7 @@ test('a grid level can be finished by tapping, going down as well as across', as
   await page.getByRole('button', { name: 'grab', exact: true }).click();
 
   await expect(page.getByRole('list').first()).toContainText('move(bolt, down, 2)');
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
 });
 
@@ -518,7 +534,7 @@ test('the workshop is open, with nothing to get wrong', async ({ page }) => {
   await page.getByRole('button', { name: 'bark', exact: true }).click();
   // The character buttons carry their emoji too, so the name is not exact.
   await picker(page).getByRole('button', { name: /sniff/ }).click();
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
   // No win screen, because there is nothing to win.
   await page.waitForTimeout(2000);
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toHaveCount(0);
@@ -534,11 +550,22 @@ test('the workshop is open, with nothing to get wrong', async ({ page }) => {
  */
 test('a generated caper can be finished by tapping alone', async ({ page }) => {
   await unlockThrough(page, 3);
+  // Past the scaffold, so this tests the blank page. The head start has its own
+  // test below — mixing the two would leave neither actually checked.
+  await page.addInitScript(() => {
+    const key = 'coderx.progress.v1';
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    state.mastery = { 'code.sequence': { attempts: 9, successes: 9, lastSeen: '2026-01-01' },
+                      'code.loops': { attempts: 9, successes: 9, lastSeen: '2026-01-01' } };
+    window.localStorage.setItem(key, JSON.stringify(state));
+  });
   await page.goto('/play/g-binrun-1-0000');
 
   // It is a proper caper, with prose to read and a budget stated up front.
-  await expect(page.getByRole('heading', { name: 'The Long Street' }).first()).toBeVisible();
-  await expect(page.getByText(/bins again/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Somebody Else Did This' }).first()).toBeVisible();
+  await expect(page.getByText(/every single square/)).toBeVisible();
   await page.getByRole('button', { name: 'On it' }).click();
   await expect(page.getByText('Bin all 4 — in 5 lines or fewer.')).toBeVisible();
 
@@ -551,12 +578,14 @@ test('a generated caper can be finished by tapping alone', async ({ page }) => {
   await picker(page).getByRole('button', { name: '➡︎' }).click();
 
   await expect(page.getByRole('list').first()).toContainText('repeat 4 {');
-  await page.getByRole('button', { name: /Run it/ }).click();
+  await runIt(page);
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
 
-  // It pays in XP. It does not mint a sticker — those stay hand-written.
+  // It pays in XP and, this time, a crew badge. What it must never do is mint
+  // a story sticker: those are jokes about hand-written moments.
   await expect(page.getByText(/^\+\d+ XP$/)).toBeVisible();
   await expect(page.getByText('New sticker')).toHaveCount(0);
+  await expect(page.getByText('New badge')).toBeVisible();
 });
 
 test("HQ offers a choice of capers, and they are playable", async ({ page }) => {
@@ -571,4 +600,85 @@ test("HQ offers a choice of capers, and they are playable", async ({ page }) => 
 
   await offered.first().click();
   await expect(page.getByRole('button', { name: 'On it' })).toBeVisible();
+});
+
+/**
+ * Say what will happen before you find out.
+ *
+ * Getting it wrong has to cost nothing, or he stops guessing — and a boy who
+ * stops guessing has stopped predicting, which was the whole point.
+ */
+test('calling it wrong costs nothing', async ({ page }) => {
+  await unlockThrough(page, 3);
+  await page.goto('/play/c1l4');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  // A correct solution, built the long way round so the budget still allows it.
+  await page.getByRole('button', { name: 'repeat', exact: true }).click();
+  await pickNumber(page, 3);
+  await tapBrick(page, 'grab');
+  await tapBrick(page, 'move', goRight(page));
+  await tapBrick(page, 'drop');
+  await tapBrick(page, 'move', goRight(page));
+
+  await page.getByRole('button', { name: /Run it/ }).click();
+
+  // Bolt asks first, and the true answer is on offer.
+  const sheet = page.getByTestId('call-it');
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText(/how many bags go in/i)).toBeVisible();
+  await expect(sheet.getByRole('button', { name: '3', exact: true })).toBeVisible();
+
+  // Call it wrong on purpose.
+  await sheet.getByRole('button', { name: '0', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
+
+  // Warm about the miss, and paid for having a go regardless.
+  await expect(page.getByText(/it was 3/i).first()).toBeVisible();
+  await expect(page.getByText('Called it first')).toBeVisible();
+  await expect(page.getByText(/wrong|incorrect/i)).toHaveCount(0);
+});
+
+test('a caper that has beaten him hands him a leg-up, cursor and all', async ({ page }) => {
+  // Not everyone gets one: a boy on his first caper needs to write it himself.
+  // This is the other case — a level he has genuinely failed three times.
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'coderx.progress.v1',
+      JSON.stringify({
+        version: 1, agentName: 'Turbo', hqName: 'The Shed', avatar: 'sniff', xp: 300,
+        levels: {
+          c1l1: { completed: true }, c1l2: { completed: true },
+          c1l3: { completed: false, attempts: 4, hintsUsed: 3, bestSize: null, typedItHimself: false, lastCode: '' },
+        },
+        stickers: [], clubCards: [], streak: { lastDay: null, count: 0, best: 0, freezes: 2 },
+        mastery: {}, sessions: {}, typedLines: 0, createdAt: new Date().toISOString(),
+      }),
+    );
+  });
+  await page.goto('/play/c1l3');
+  await page.getByRole('button', { name: 'On it' }).click();
+
+  const code = page.getByTestId('code-scroll');
+  await expect(code).toContainText('repeat 3 {');
+  await expect(code).toContainText('grab');
+
+  // The missing step, tapped. It must land INSIDE the loop — left to default,
+  // the first tap went after the closing brace and the level errored on a move
+  // that looked perfectly sensible.
+  await page.getByRole('button', { name: 'move far', exact: true }).click();
+  await picker(page).getByRole('button', { name: '➡︎' }).click();
+  await pickNumber(page, 2);
+
+  await runIt(page, '3');
+  await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
+});
+
+test('a brand new player writes his first caper himself', async ({ page }) => {
+  // The head start must never reach level one. Arriving to four of its five
+  // lines would make the level where he first tells a dog what to do a level
+  // where he does almost nothing.
+  await enterHQ(page);
+  await openLevelOne(page);
+  await expect(page.getByTestId('code-scroll')).toContainText('Nothing here yet');
 });

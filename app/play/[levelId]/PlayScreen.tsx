@@ -28,6 +28,7 @@ import { bankWordsIn, flush, observe } from '@/lib/observe';
 import { getLevel, nextLevelId } from '@/curriculum/levels';
 import { awardsFor, rankFor, type Award } from '@/progress/xp';
 import { addMinutes, collect, collectCard, levelProgress, recordSkillAttempt, setLevelProgress } from '@/progress/store';
+import { newBadges } from '@/progress/badges';
 
 const DIRECTIONS = ['up', 'down', 'left', 'right'];
 const MODE_NAMES = ['robot', 'drill', 'jet', 'magnet'];
@@ -73,6 +74,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   const [hintsUsed, setHintsUsed] = useState(0);
   const [tookDare, setTookDare] = useState(false);
   const [awards, setAwards] = useState<Award[] | null>(null);
+  const [earnedBadge, setEarnedBadge] = useState<string | null>(null);
   const [muted, setMutedState] = useState(false);
   const [banner, setBanner] = useState<CoderXError | null>(null);
 
@@ -346,7 +348,9 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       if (!earned) return next;
 
       next = { ...next, xp: next.xp + earned.reduce((n, a) => n + a.xp, 0) };
-      next = collect(next, level.reward.sticker);
+      // A generated caper names no sticker — the collection stays hand-written,
+      // and pays out instead through the crew badges below.
+      if (level.reward.sticker) next = collect(next, level.reward.sticker);
       if (typedLines > 0) next = collect(next, 'typing-trophy');
       if (level.bridgeCard) next = collectCard(next, level.bridgeCard);
       return next;
@@ -383,6 +387,25 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playback.done, runResult, ready, level, program, hintsUsed, typedLines, tookDare, update]);
 
+  /**
+   * Crew badges.
+   *
+   * Earned by a pattern across many capers rather than by finishing this one,
+   * so they are checked against the whole state — and out here rather than
+   * inside an updater, which React is free to run more than once.
+   */
+  useEffect(() => {
+    if (!ready) return;
+    const fresh = newBadges(state);
+    if (!fresh.length) return;
+    setEarnedBadge((b) => b ?? fresh[0]);
+    update((p) => {
+      let next = p;
+      for (const id of fresh) next = collect(next, id);
+      return next;
+    });
+  }, [state, ready, update]);
+
   const replay = () => {
     // Only a genuine replay counts. Retrying something he has not beaten yet is
     // persistence, not preference, and the attempt record already carries it.
@@ -392,6 +415,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     arrivedAt.current = Date.now();
     abandonRecorded.current = false;
     setAwards(null);
+    setEarnedBadge(null);
     settled.current = false;
     setRunResult(null);
     setHintsUsed(0);
@@ -696,7 +720,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       {awards && (
         <RewardPanel
           awards={awards}
-          sticker={level.reward.sticker}
+          sticker={level.reward.sticker ?? earnedBadge ?? undefined}
           bridgeCard={level.bridgeCard}
           nextHref={nextLevelId(level.id) ? `/play/${nextLevelId(level.id)}` : undefined}
           onReplay={replay}

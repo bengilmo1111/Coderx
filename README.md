@@ -79,6 +79,80 @@ can use. That taxonomy is also the extension point: adding maths or reading
 
 ---
 
+## Capers that did not exist until he asked for one
+
+Eighteen hand-written levels is the whole curriculum, and Henry finished Chapter
+1 in a single sitting. Spacing a skill out over weeks, or pitching a caper at
+where he actually is, needs variants to choose between — so a **template** takes
+a difficulty band and a seed and emits a real `Level`.
+
+The generator combines; **it does not invent**. Every sentence, joke and title in
+`curriculum/templates/` was written by a person, and no model is involved in
+making content. What varies is the shape of the street, which villain is standing
+at the end of it denying everything, and the numbers.
+
+**The id IS the level.** Progress is keyed by level id and synced between the
+phone and the family computer, so `g-binrun-3-0417` — template `binrun`, band 3,
+seed 417 — rebuilds itself identically wherever it is opened. Nothing is stored,
+and his half-finished code still lines up when he picks up the other device.
+
+The first template is `binrun`, and it was chosen for what it secretly is:
+
+```
+repeat 4 {
+  grab(sniff)
+  drop(sniff)
+  move(sniff, right, 3)
+}
+```
+
+That is **4 x 3, walked out on a pavement**. So the skills fall out of the
+numbers rather than being tagged by hand — stride 1 is counting on, 2 and 3 are
+skip counting, anything above 1 is the times tables — and the scheduler will be
+able to ask for the three times table and get back a caper about a dog and some
+litter.
+
+The loop solution is always four statements whatever the numbers, and doing it by
+hand is always `3n-1`, so **the line budget that forces the loop is derived, not
+guessed**. Generated capers sit outside `ALL_LEVELS` on purpose: unlocking looks
+at the level immediately before this one, so splicing one into the middle would
+re-lock a level he had already finished.
+
+### Stickers stay hand-written; badges are the thing that scales
+
+The nineteen stickers are jokes about particular moments — *"slightly chewed, he
+is very sorry"*, *"now only 12% toaster"*. Generating those gives you a collection
+that grows until nothing in it means anything. So generated capers award **no
+sticker at all**. They pay in XP, and into a small set of **crew badges** earned
+by patterns across many capers rather than by finishing any one: five capers with
+a loop in them, twenty-five lines typed, a caper that beat him and then did not.
+
+Badges are awarded on positive evidence only — there is no badge for a thing he
+cannot do yet — and none of them names a skill. He sees capers, not a report card.
+
+### Nothing generated ships unread by a machine
+
+`tests/template.test.ts` runs the same proof `tests/levels.test.ts` makes for the
+hand-written levels, over sampled seeds at every band, plus the checks a person
+writing a level by hand would notice and a generator never will:
+
+- The reference is run **with the level's own `commandable`**. The old suite runs
+  with none, which means everyone takes orders — so a caper that commands scenery
+  would have passed the tests and failed in the game.
+- The budget is **enforced by the goal**, not just drawn on screen. `maxLines` is
+  only a counter chip in `PlayScreen`; a goal that ignores `size` is a lesson that
+  quietly does not happen.
+- Every line of the reference can be **reached by tapping** from the bricks the
+  level declares.
+- The by-hand solution genuinely works and is genuinely refused.
+- The board only ever composes art that exists, stays inside what a phone can
+  draw, and never puts down more litter than one drawing can stand in for.
+
+Those checks were verified by breaking the template on purpose and watching the
+right test fail.
+
+---
+
 ## Running it
 
 ```bash
@@ -273,10 +347,18 @@ The design note leads with the trap, because a stored conclusion that "he's bad
 at loops" would rebuild the coding club problem inside the thing meant to fix
 it.
 
-**Build 3** — Free Play using everything he's collected (a collection he can't
+**Build 3** — the scheduler. Templates give the game something to schedule;
+what is missing is the thing that decides. Spaced repetition per skill with
+expanding intervals, interleaving instead of one chapter at a time, and
+difficulty aimed at about four wins in five — which is also the anti-anxiety
+mechanism, because a boy who has decided he is behind then succeeds four times
+out of five by construction. `suggestCapers` in `curriculum/suggest.ts` is
+where it lands; today that function picks a band from how far he has got, and
+the real one replaces its body and nothing else.
+
+After that: Free Play using everything he's collected (a collection he can't
 play with is a dead collection), a share link for when *he* chooses to show
-someone, Chapters 2–3 for variables and his own functions, and the first
-non-coding challenge types riding the skill taxonomy.
+someone, and the first non-coding challenge types riding the skill taxonomy.
 
 ## What to watch in his first session
 

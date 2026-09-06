@@ -10,6 +10,9 @@ import { CHAPTER1 } from './chapter1/levels';
 import { CHAPTER2 } from './chapter2/levels';
 import { CHAPTER3 } from './chapter3/levels';
 import { SANDBOX } from './sandbox';
+import { generatedLevel } from './template';
+// Importing a template is what registers it. Nothing else references these.
+import './templates/binrun';
 import type { Level } from './types';
 
 export const CHAPTERS: { number: number; title: string; levels: Level[] }[] = [
@@ -24,7 +27,19 @@ export function getLevel(id: string): Level | undefined {
   // The Workshop is deliberately outside ALL_LEVELS: it must not affect
   // unlocking, progress counts or "what comes next".
   if (id === SANDBOX.id) return SANDBOX;
-  return ALL_LEVELS.find((l) => l.id === id);
+  const written = ALL_LEVELS.find((l) => l.id === id);
+  if (written) return written;
+  /**
+   * Generated capers are outside ALL_LEVELS for the same reason, and two more.
+   *
+   * `isUnlocked` looks at the level immediately before this one in the array, so
+   * splicing a generated caper into the middle would RE-LOCK the one after it
+   * for a boy who had already finished it — which is precisely the experience
+   * this app exists to avoid. Being absent, they gate nothing and are always
+   * playable. And `ALL_LEVELS.length` is the denominator of "levels done" in the
+   * parent view, which should keep meaning the story levels.
+   */
+  return generatedLevel(id);
 }
 
 export function nextLevelId(id: string): string | undefined {

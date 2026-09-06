@@ -523,3 +523,52 @@ test('the workshop is open, with nothing to get wrong', async ({ page }) => {
   await page.waitForTimeout(2000);
   await expect(page.getByRole('heading', { name: 'Nailed it!' })).toHaveCount(0);
 });
+
+/**
+ * A caper that did not exist until it was asked for.
+ *
+ * The whole point of a generated level is that it is a real level: the same
+ * editor, the same interpreter, the same win screen, and above all the same
+ * constraint — it has to be finishable by tapping alone at phone size, from an
+ * id that is the only place it exists.
+ */
+test('a generated caper can be finished by tapping alone', async ({ page }) => {
+  await unlockThrough(page, 3);
+  await page.goto('/play/g-binrun-1-0000');
+
+  // It is a proper caper, with prose to read and a budget stated up front.
+  await expect(page.getByRole('heading', { name: 'The Long Street' }).first()).toBeVisible();
+  await expect(page.getByText(/bins again/)).toBeVisible();
+  await page.getByRole('button', { name: 'On it' }).click();
+  await expect(page.getByText('Bin all 4 — in 5 lines or fewer.')).toBeVisible();
+
+  // Four bins in a row: one loop of grab, drop, step along.
+  await page.getByRole('button', { name: 'repeat', exact: true }).click();
+  await pickNumber(page, 4);
+  await page.getByRole('button', { name: 'grab', exact: true }).click();
+  await page.getByRole('button', { name: 'drop', exact: true }).click();
+  await page.getByRole('button', { name: 'move', exact: true }).click();
+  await picker(page).getByRole('button', { name: '➡︎' }).click();
+
+  await expect(page.getByRole('list').first()).toContainText('repeat 4 {');
+  await page.getByRole('button', { name: /Run it/ }).click();
+  await expect(page.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
+
+  // It pays in XP. It does not mint a sticker — those stay hand-written.
+  await expect(page.getByText(/^\+\d+ XP$/)).toBeVisible();
+  await expect(page.getByText('New sticker')).toHaveCount(0);
+});
+
+test("HQ offers a choice of capers, and they are playable", async ({ page }) => {
+  await unlockThrough(page, 3);
+  await page.goto('/');
+
+  const strip = page.locator('section').filter({ hasText: /Today.s capers/ }).first();
+  await expect(strip).toBeVisible();
+  // A choice, never a queue of one — picking is half of why he comes back.
+  const offered = strip.getByRole('link');
+  expect(await offered.count()).toBeGreaterThanOrEqual(2);
+
+  await offered.first().click();
+  await expect(page.getByRole('button', { name: 'On it' })).toBeVisible();
+});

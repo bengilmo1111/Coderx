@@ -24,6 +24,7 @@ export function HomeScreen() {
   const [renaming, setRenaming] = useState(false);
   const [players, setPlayers] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [signingIn, setSigningIn] = useState<{ id: string; name: string; avatar: string } | null>(null);
 
   if (!ready) return <div className="p-6 text-center font-black opacity-40">Loading HQ…</div>;
 
@@ -33,6 +34,20 @@ export function HomeScreen() {
   // second profile for a child who already had one.
   if (!state.agentName && !syncChecked) {
     return <div className="p-6 text-center font-black opacity-40">Loading HQ…</div>;
+  }
+
+  // Swapping players: his name, his four pictures, his game.
+  if (signingIn) {
+    return (
+      <SignIn
+        profiles={[signingIn]}
+        onSignedIn={async () => {
+          setSigningIn(null);
+          await refreshSync();
+        }}
+        onBack={() => setSigningIn(null)}
+      />
+    );
   }
 
   // A second child, on a device the first child already uses. Deliberately the
@@ -172,9 +187,15 @@ export function HomeScreen() {
             setPlayers(false);
             setAdding(true);
           }}
-          onSwitch={async () => {
+          onSwitch={async (who) => {
+            // Sign out, then ask for HIS four pictures. Without that second
+            // half, swapping dropped whoever tapped it into the signed-out
+            // local game — which looks like it worked, plays like it worked,
+            // and quietly syncs nothing. The code is also the only thing
+            // standing between one brother and the other's stickers.
             await signOut();
             setPlayers(false);
+            setSigningIn(who);
             await refreshSync();
           }}
           onClaim={async (pin) => {
@@ -326,10 +347,13 @@ function SignIn({
   profiles,
   onSignedIn,
   onNewPlayer,
+  onBack,
 }: {
   profiles: { id: string; name: string; avatar: string }[];
   onSignedIn: () => Promise<void>;
   onNewPlayer?: () => void;
+  /** Somewhere to go when there is only one name and it is the wrong one. */
+  onBack?: () => void;
 }) {
   const [chosen, setChosen] = useState(profiles.length === 1 ? profiles[0] : null);
   const [busy, setBusy] = useState(false);
@@ -365,7 +389,7 @@ function SignIn({
           subtitle="Tap your four pictures."
           busy={busy}
           error={error}
-          onCancel={profiles.length > 1 ? () => setChosen(null) : onNewPlayer}
+          onCancel={profiles.length > 1 ? () => setChosen(null) : (onBack ?? onNewPlayer)}
           onDone={async (pin) => {
             setBusy(true);
             setError(null);
@@ -404,7 +428,7 @@ function Players({
   profiles: { id: string; name: string; avatar: string }[];
   onClose: () => void;
   onAdd: () => void;
-  onSwitch: () => Promise<void>;
+  onSwitch: (who: { id: string; name: string; avatar: string }) => Promise<void>;
   onClaim: (pin: string[]) => Promise<boolean>;
 }) {
   const [claiming, setClaiming] = useState(false);
@@ -455,7 +479,7 @@ function Players({
                 <button
                   key={p.id}
                   type="button"
-                  onClick={onSwitch}
+                  onClick={() => onSwitch(p)}
                   className="chunk flex flex-col items-center gap-1 bg-white px-3 py-3"
                 >
                   <Avatar who={p.avatar} size={44} />

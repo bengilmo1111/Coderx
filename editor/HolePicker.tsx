@@ -16,7 +16,11 @@ import { sfx } from '@/lib/sound';
  * words is the default and typing is the option, not the requirement.
  */
 
-const WORD_BANK = [
+/**
+ * Exported so the recorder can tell a word he TAPPED from a word he typed.
+ * Only bank words are ever observed — his own are his.
+ */
+export const WORD_BANK = [
   'case', 'closed', 'yes', 'no', 'stop', 'thief', 'oops', 'sorry', 'again', 'help',
   'good', 'dog', 'bin', 'day', 'mine', 'yum', 'run', 'hello', 'gotcha', 'nope',
 ];

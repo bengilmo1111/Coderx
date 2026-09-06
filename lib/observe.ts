@@ -24,10 +24,27 @@ export interface Observation {
     | 'defined_command'
     | 'typed_line'
     | 'word_chosen'
-    | 'mode_used';
+    | 'mode_used'
+    | 'brick_used';
   levelId?: string;
   skillIds?: string[];
   payload?: Record<string, unknown>;
+}
+
+/**
+ * The words in a phrase that came from the preset bank.
+ *
+ * This is the privacy rule made executable rather than remembered. Tapping
+ * "dog" is a choice among options we wrote, so it is an interest signal we may
+ * keep. Typing "dog" is him confiding something, and it is his. The two arrive
+ * through the same slot, so the filter is the only thing telling them apart.
+ */
+export function bankWordsIn(text: string, bank: readonly string[]): string[] {
+  const allowed = new Set(bank);
+  return text
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((w) => allowed.has(w));
 }
 
 const queue: Observation[] = [];

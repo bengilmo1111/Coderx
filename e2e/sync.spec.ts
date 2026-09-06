@@ -92,3 +92,53 @@ test('progress follows him from one device to the other', async ({ browser }) =>
   await computer.close();
   await phone.close();
 });
+
+/**
+ * The recorder, end to end.
+ *
+ * docs/memory-loop.md's build order starts with "write observations, change
+ * nothing about the game". Nothing in the app reads these back yet, so the only
+ * thing that can prove the clock has actually started is watching a real
+ * session land real rows.
+ */
+test('playing a caper leaves a record of what he did', async ({ browser, request }) => {
+  test.skip(!FAKE_DB, 'reads rows back, so it needs the fake');
+  const name = `Obs${Date.now().toString().slice(-6)}`;
+
+  const context: BrowserContext = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto('/');
+  await page.getByRole('textbox').first().fill(name);
+  await page.getByRole('button', { name: 'The Shed' }).click();
+  await page.getByRole('button', { name: /Next|Let's go/ }).click();
+  await tapPin(page);
+  await tapPin(page);
+  await expect(page.getByRole('heading', { name: 'The Shed' })).toBeVisible({ timeout: 20_000 });
+
+  await finishLevelOne(page);
+  // Leaving the level flushes the batch on the way out.
+  await page.goto('/');
+  await page.waitForTimeout(5000);
+
+  const res = await request.get(`${FAKE_DB}/rest/v1/observations?select=*`);
+  const rows = (await res.json()) as {
+    kind: string;
+    level_id: string | null;
+    skill_ids: string[] | null;
+    payload: Record<string, unknown>;
+  }[];
+
+  // He tapped bricks and finished a level, so both must be there.
+  expect(rows.map((r) => r.kind)).toContain('brick_used');
+  const attempt = rows.find((r) => r.kind === 'level_attempt');
+  expect(attempt).toBeTruthy();
+  expect(attempt?.level_id).toBe('c1l1');
+  expect(attempt?.payload.won).toBe(true);
+  // The skills the level exercises ride along, so a rollup never has to guess.
+  expect(attempt?.skill_ids?.length).toBeGreaterThan(0);
+
+  // He won, so there is nothing to call abandonment.
+  expect(rows.map((r) => r.kind)).not.toContain('abandon');
+
+  await context.close();
+});

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { BRIDGE_CARDS } from '@/curriculum/bridgeCards';
 import { STICKERS } from '@/progress/stickers';
+import { Sticker } from './Sticker';
 import type { Award } from '@/progress/xp';
 
 /**
@@ -44,7 +45,7 @@ export function RewardPanel({
 
         {badge && (
           <div className="panel mb-4 flex items-center gap-3 bg-pop/40 p-3">
-            <span className="text-4xl">{badge.glyph}</span>
+            <Sticker id={badge.id} size={44} />
             <div>
               <p className="text-xs font-black uppercase opacity-50">New sticker</p>
               <p className="font-black">{badge.name}</p>

@@ -12,6 +12,7 @@ import { EmojiPin } from '@/components/EmojiPin';
 import { Avatar } from '@/components/Avatar';
 import { CharacterPicker } from '@/components/CharacterPicker';
 import { Landscape } from '@/components/Landscape';
+import { Sticker } from '@/components/Sticker';
 import { store, emptyProgress } from '@/progress/store';
 import { createProfile, signIn, signOut } from '@/lib/sync';
 import { sfx } from '@/lib/sound';
@@ -327,7 +328,9 @@ export function HomeScreen() {
               const owned = state.stickers.includes(s.id);
               return (
                 <div key={s.id} className={`panel p-3 text-center ${owned ? '' : 'faded'}`}>
-                  <div className="text-4xl">{owned ? s.glyph : '❓'}</div>
+                  <div className="flex h-12 items-center justify-center text-4xl">
+                    {owned ? <Sticker id={s.id} size={48} /> : '❓'}
+                  </div>
                   <p className="mt-1 text-sm font-black">{owned ? s.name : '???'}</p>
                   {owned && <p className="text-[11px] font-bold text-muted">{s.blurb}</p>}
                 </div>

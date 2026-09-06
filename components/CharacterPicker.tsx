@@ -35,7 +35,7 @@ export function CharacterPicker({
               sfx.tap();
               onChange(key);
             }}
-            className={`chunk flex flex-col items-center gap-1 px-1 py-2 ${chosen ? 'bg-pop' : 'bg-white'}`}
+            className={`chunk chunk-card flex flex-col items-center gap-1 px-1 py-2 ${chosen ? 'bg-pop' : 'bg-paper'}`}
           >
             <Avatar who={key} size={40} />
             <span className="text-[10px] font-black leading-tight">{CHARACTERS[key].label}</span>

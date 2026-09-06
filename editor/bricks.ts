@@ -247,13 +247,23 @@ function buildBricks(cast: string[], variable = 'count'): Record<string, Brick> 
 /** The default single-hero set, used by tests and for brick help text. */
 export const BRICKS: Record<string, Brick> = buildBricks(['sniff']);
 
+/**
+ * A colour per kind of brick, from the house palette.
+ *
+ * The colour coding is doing real teaching work — Scratch groups its blocks the
+ * same way, and the Scratch bridge cards lean on the resemblance — so the six
+ * stay firmly distinguishable rather than becoming six shades of one thing.
+ *
+ * Labels are ink, not white: white on these mid-tones sat around 2.6:1, which
+ * is not a contrast ratio to hand an eight-year-old reading code on a phone.
+ */
 export const CATEGORY_STYLE: Record<BrickCategory, { name: string; className: string }> = {
-  go: { name: 'Go', className: 'bg-sky-500 border-sky-800' },
-  do: { name: 'Do', className: 'bg-emerald-500 border-emerald-800' },
-  control: { name: 'Control', className: 'bg-amber-500 border-amber-800' },
-  talk: { name: 'Talk', className: 'bg-fuchsia-500 border-fuchsia-800' },
-  count: { name: 'Count', className: 'bg-violet-500 border-violet-800' },
-  define: { name: 'Yours', className: 'bg-rose-500 border-rose-800' },
+  go: { name: 'Go', className: 'bg-blue' },
+  do: { name: 'Do', className: 'bg-hill' },
+  control: { name: 'Control', className: 'bg-orange' },
+  talk: { name: 'Talk', className: 'bg-purple' },
+  count: { name: 'Count', className: 'bg-pop' },
+  define: { name: 'Yours', className: 'bg-danger' },
 };
 
 /**

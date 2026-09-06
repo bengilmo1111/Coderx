@@ -99,7 +99,7 @@ export function EmojiPin({
             type="button"
             disabled={busy}
             onClick={() => tap(emoji)}
-            className="chunk bg-white py-2 text-2xl"
+            className="chunk bg-paper py-2 text-2xl"
           >
             {emoji}
           </button>
@@ -108,7 +108,7 @@ export function EmojiPin({
 
       <div className="flex gap-2">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="chunk bg-white px-4">
+          <button type="button" onClick={onCancel} className="chunk bg-paper px-4">
             Back
           </button>
         )}
@@ -117,7 +117,7 @@ export function EmojiPin({
           aria-label="Undo last picture"
           onClick={() => setPin((p) => p.slice(0, -1))}
           disabled={pin.length === 0}
-          className="chunk bg-white px-4 text-lg"
+          className="chunk bg-paper px-4 text-lg"
         >
           ⌫
         </button>
@@ -125,7 +125,7 @@ export function EmojiPin({
           type="button"
           onClick={() => setPin([])}
           disabled={pin.length === 0}
-          className="chunk flex-1 bg-white py-3"
+          className="chunk flex-1 bg-paper py-3"
         >
           Start again
         </button>

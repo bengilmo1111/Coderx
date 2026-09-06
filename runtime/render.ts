@@ -9,7 +9,14 @@
 import { artFor } from './art';
 import { CHARACTERS, MODES, type Effect, type Frame, type WorldState } from './world';
 
-const INK = '#12100e';
+/*
+ * The board shares the page's palette, so the canvas does not read as a
+ * different app bolted into the middle of one. Deep blue ink rather than black,
+ * and grass/path warmed to match the hills behind the home screen.
+ */
+const INK = '#15314b';
+const PAPER = '#fffdf6';
+const SUN = '#f5c84c';
 
 /**
  * Litter, and specifically NOT a wastebasket.
@@ -87,16 +94,16 @@ function drawTiles(ctx: CanvasRenderingContext2D, world: WorldState, L: Layout) 
 
       const fill =
         tile === 'grass'
-          ? '#8fd67a'
+          ? '#7bc96d'
           : tile === 'path'
-            ? '#e8e2d4'
+            ? '#efe7d2'
             : tile === 'bin'
-              ? '#4b5f7a'
+              ? '#3f5a74'
               : tile === 'wall'
-                ? '#b08968'
+                ? '#b5896b'
                 : tile === 'gap'
-                  ? '#2b2b33'
-                  : '#7a6a55';
+                  ? '#1b2a3a'
+                  : '#6f6153';
       ctx.fillStyle = fill;
       ctx.fillRect(px, py, L.cell, L.cell);
 
@@ -110,13 +117,13 @@ function drawTiles(ctx: CanvasRenderingContext2D, world: WorldState, L: Layout) 
         const h = L.cell * 0.6;
         const bx = px + (L.cell - w) / 2;
         const by = py + L.cell - h - L.cell * 0.12;
-        ctx.fillStyle = '#2f3d52';
+        ctx.fillStyle = '#274058';
         ctx.strokeStyle = INK;
         ctx.lineWidth = Math.max(2, L.cell * 0.05);
         roundRect(ctx, bx, by, w, h, 4);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = '#63789a';
+        ctx.fillStyle = '#5b7793';
         roundRect(ctx, bx - w * 0.08, by - h * 0.18, w * 1.16, h * 0.22, 4);
         ctx.fill();
         ctx.stroke();
@@ -156,7 +163,7 @@ function drawTiles(ctx: CanvasRenderingContext2D, world: WorldState, L: Layout) 
       }
 
       if (tile === 'fence') {
-        ctx.fillStyle = '#5c4c39';
+        ctx.fillStyle = '#5a4a37';
         ctx.fillRect(px + L.cell * 0.15, py + L.cell * 0.1, L.cell * 0.7, L.cell * 0.8);
         ctx.strokeStyle = INK;
         ctx.lineWidth = 2;
@@ -218,7 +225,7 @@ function speechBubble(ctx: CanvasRenderingContext2D, text: string, cx: number, c
   const bx = cx - w / 2;
   const by = cy - cell * 0.95 - h;
 
-  ctx.fillStyle = '#fffdf5';
+  ctx.fillStyle = PAPER;
   ctx.strokeStyle = INK;
   ctx.lineWidth = Math.max(2, cell * 0.05);
   roundRect(ctx, bx, by, w, h, cell * 0.18);
@@ -230,7 +237,7 @@ function speechBubble(ctx: CanvasRenderingContext2D, text: string, cx: number, c
   ctx.lineTo(cx + cell * 0.02, by + h + cell * 0.26);
   ctx.lineTo(cx + cell * 0.14, by + h - 1);
   ctx.closePath();
-  ctx.fillStyle = '#fffdf5';
+  ctx.fillStyle = PAPER;
   ctx.fill();
   ctx.stroke();
 
@@ -266,7 +273,7 @@ function powBurst(
     ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
   }
   ctx.closePath();
-  ctx.fillStyle = '#ffd23f';
+  ctx.fillStyle = SUN;
   ctx.strokeStyle = INK;
   ctx.lineWidth = 3;
   ctx.fill();
@@ -283,7 +290,7 @@ function powBurst(
 function sparkle(ctx: CanvasRenderingContext2D, cx: number, cy: number, cell: number, t: number) {
   ctx.save();
   ctx.globalAlpha = 1 - t;
-  ctx.strokeStyle = '#ffd23f';
+  ctx.strokeStyle = SUN;
   ctx.lineWidth = 3;
   const r = cell * (0.35 + t * 0.5);
   for (let i = 0; i < 6; i += 1) {
@@ -309,7 +316,7 @@ export function drawScene(
   const ease = easeOut(Math.min(1, Math.max(0, t)));
 
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = '#fdf6e3';
+  ctx.fillStyle = '#fff8e7';
   ctx.fillRect(0, 0, width, height);
   halftone(ctx, width, height);
 
@@ -402,7 +409,7 @@ function drawVariables(ctx: CanvasRenderingContext2D, vars: Record<string, numbe
     const text = `${name}: ${value}`;
     const w = ctx.measureText(text).width + 18;
     const h = 26;
-    ctx.fillStyle = '#fffdf5';
+    ctx.fillStyle = PAPER;
     ctx.strokeStyle = INK;
     ctx.lineWidth = 2.5;
     roundRect(ctx, 8, y, w, h, 7);
@@ -435,7 +442,7 @@ function healthBar(
   for (let i = 0; i < maxHealth; i += 1) {
     ctx.beginPath();
     ctx.arc(x + pip / 2, cy, pip / 2, 0, Math.PI * 2);
-    ctx.fillStyle = i < health ? '#e5484d' : 'rgba(255,255,255,0.75)';
+    ctx.fillStyle = i < health ? '#e84a5f' : 'rgba(255,255,255,0.75)';
     ctx.fill();
     ctx.stroke();
     x += pip + gap;

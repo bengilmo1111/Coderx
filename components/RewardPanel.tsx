@@ -54,7 +54,7 @@ export function RewardPanel({
         )}
 
         {card && (
-          <div className="panel mb-4 bg-sky-100 p-3">
+          <div className="panel mb-4 p-3" style={{ background: 'color-mix(in srgb, var(--color-sky) 18%, white)' }}>
             <p className="title mb-1 text-sm">{card.title}</p>
             <p className="mb-2 text-sm font-bold leading-snug">{card.body}</p>
             <p className="text-xs font-bold opacity-60">
@@ -64,15 +64,15 @@ export function RewardPanel({
         )}
 
         <div className="flex gap-2">
-          <button type="button" onClick={onReplay} className="chunk bg-white px-4">
+          <button type="button" onClick={onReplay} className="chunk bg-paper px-4">
             Again
           </button>
           {nextHref ? (
-            <Link href={nextHref} className="chunk flex flex-1 items-center justify-center bg-emerald-400 py-3 text-lg">
+            <Link href={nextHref} className="chunk flex flex-1 items-center justify-center bg-hill py-3 text-lg">
               Next caper →
             </Link>
           ) : (
-            <Link href="/" className="chunk flex flex-1 items-center justify-center bg-emerald-400 py-3 text-lg">
+            <Link href="/" className="chunk flex flex-1 items-center justify-center bg-hill py-3 text-lg">
               Back to HQ
             </Link>
           )}

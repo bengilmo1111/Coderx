@@ -11,12 +11,21 @@ import { useProgress } from '@/lib/useProgress';
 import { EmojiPin } from '@/components/EmojiPin';
 import { Avatar } from '@/components/Avatar';
 import { CharacterPicker } from '@/components/CharacterPicker';
+import { Landscape } from '@/components/Landscape';
 import { store, emptyProgress } from '@/progress/store';
 import { createProfile, signIn, signOut } from '@/lib/sync';
 import { sfx } from '@/lib/sound';
 
 const AGENT_NAMES = ['Turbo', 'Chomp', 'Bolt Jr', 'Fang', 'Rocket', 'Spud', 'Nitro', 'Biscuit'];
 const HQ_NAMES = ['The Shed', 'Bin HQ', 'The Bunker', 'Sock Drawer', 'The Kennel', 'Base Alpha'];
+
+/** One strong colour per chapter, on the corner of every card in it. */
+const CHAPTER_ACCENT = [
+  'var(--color-purple)',
+  'var(--color-hill)',
+  'var(--color-danger)',
+  'var(--color-blue)',
+];
 
 export function HomeScreen() {
   const { state, update, ready, streakOutcome, sync, syncChecked, refreshSync } = useProgress();
@@ -108,25 +117,31 @@ export function HomeScreen() {
   const pct = Math.round(rankProgress(state.xp) * 100);
 
   return (
-    <main className="dots min-h-[100dvh] pb-10">
-      <header className="border-b-[3px] border-ink bg-white/70 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
+    <main className="world pb-12">
+      <Landscape />
+
+      {/* The shed sign: his HQ, his agent name, and how far up the ranks he is. */}
+      <header className="mx-auto w-[min(56rem,100%-1.5rem)] pt-8 text-center sm:pt-12">
+        <div className="sign mx-auto inline-block max-w-full px-6 py-5 sm:px-12 sm:py-7">
+          <span className="float text-4xl sm:text-5xl" aria-hidden="true">
+            💻
+          </span>
           <button
             type="button"
             onClick={() => setRenaming(true)}
-            className="min-w-0 flex-1 text-left"
+            className="block w-full text-center"
             title="Change your name"
           >
-            <h1 className="title text-2xl leading-none">
-              {state.hqName || 'HQ'} <span className="text-sm opacity-35">✏️</span>
+            <h1 className="title text-4xl leading-none sm:text-6xl">
+              {state.hqName || 'HQ'} <span className="align-middle text-base opacity-30">✏️</span>
             </h1>
-            <p className="truncate text-xs font-bold opacity-60">
-              Agent {state.agentName} · {rank.glyph} {rank.name}
-            </p>
           </button>
-          <div className="chunk flex items-center gap-1 bg-orange-300 px-3 text-sm" title="Days in a row">
-            🔥 {state.streak.count}
-          </div>
+          <p className="mt-2 text-sm font-black text-muted">
+            Agent {state.agentName} · {rank.glyph} {rank.name}
+          </p>
+        </div>
+
+        <div className="mx-auto mt-5 flex max-w-md flex-wrap items-center justify-center gap-2">
           {sync.enabled && (
             <button
               type="button"
@@ -135,29 +150,33 @@ export function HomeScreen() {
                 setPlayers(true);
               }}
               aria-label="Who's playing"
-              className="shrink-0"
+              className="chunk flex items-center gap-2 bg-paper py-1 pl-1 pr-4 text-sm"
             >
-              <Avatar who={state.avatar} size={40} />
+              <Avatar who={state.avatar} size={36} />
+              {state.agentName}
             </button>
           )}
-          <Link href="/grownups" className="chunk flex items-center bg-white px-3 text-sm">
+          <div className="chunk flex items-center gap-1 bg-orange px-4 text-sm" title="Days in a row">
+            🔥 {state.streak.count}
+          </div>
+          <Link href="/grownups" className="chunk flex items-center bg-paper px-4 text-sm">
             👤
           </Link>
         </div>
 
-        <div className="mx-auto mt-2 max-w-3xl">
-          <div className="panel h-5 overflow-hidden p-0">
+        <div className="mx-auto mt-4 max-w-md">
+          <div className="h-5 overflow-hidden rounded-full border-[3px] border-ink bg-paper">
             <div className="h-full bg-pop transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
-          <p className="mt-1 text-[11px] font-bold opacity-60">
+          <p className="mt-1 text-xs font-black text-ink/70">
             {state.xp} XP{next ? ` · ${next.at - state.xp} to ${next.name} ${next.glyph}` : ' · top rank!'}
           </p>
         </div>
       </header>
 
       {streakOutcome?.freezeUsed && (
-        <div className="mx-auto mt-3 max-w-3xl px-4">
-          <div className="panel bg-sky-100 px-3 py-2 text-sm font-bold">
+        <div className="mx-auto mt-4 w-[min(56rem,100%-1.5rem)]">
+          <div className="panel px-3 py-2 text-sm font-bold" style={{ background: 'color-mix(in srgb, var(--color-sky) 18%, white)' }}>
             🧊 Your streak was frozen while you were away. It&apos;s still going.
           </div>
         </div>
@@ -218,8 +237,8 @@ export function HomeScreen() {
       )}
 
 
-      <div className="mx-auto max-w-3xl px-4">
-        <nav className="my-4 flex gap-2">
+      <div className="mx-auto w-[min(56rem,100%-1.5rem)]">
+        <nav className="my-5 flex flex-wrap justify-center gap-2">
           {(
             [
               ['capers', '🕵️ Capers'],
@@ -234,7 +253,7 @@ export function HomeScreen() {
                 sfx.tap();
                 setTab(key);
               }}
-              className={`chunk px-3 text-sm ${tab === key ? 'bg-pop' : 'bg-white'}`}
+              className={`chunk px-4 text-sm ${tab === key ? 'bg-pop' : 'bg-paper'}`}
             >
               {label}
             </button>
@@ -242,13 +261,15 @@ export function HomeScreen() {
         </nav>
 
         {tab === 'capers' && (
-          <Link href="/sandbox" className="panel mb-5 flex items-center gap-3 bg-pop/40 p-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-ink bg-white text-lg">
-              🛠️
-            </span>
+          <Link
+            href="/sandbox"
+            className="caper lift mb-5 flex items-center gap-3 p-4"
+            style={{ ['--accent' as string]: 'var(--color-sun)', ['--tilt' as string]: '0.8deg' }}
+          >
+            <span className="badge text-xl">🛠️</span>
             <span className="min-w-0 flex-1">
               <span className="block font-black">The Workshop</span>
-              <span className="block truncate text-xs font-bold opacity-60">
+              <span className="block truncate text-xs font-bold text-muted">
                 No job, no rules. Mess about with everything.
               </span>
             </span>
@@ -257,31 +278,41 @@ export function HomeScreen() {
 
         {tab === 'capers' &&
           CHAPTERS.map((chapter) => (
-            <section key={chapter.number} className="mb-6">
-              <h2 className="title mb-2 text-lg opacity-70">
+            <section key={chapter.number} className="mb-8">
+              <h2 className="pill-heading mx-auto mb-4 px-5 py-2 text-lg">
                 Chapter {chapter.number} · {chapter.title}
               </h2>
-              <ol className="space-y-3">
-                {chapter.levels.map((level) => {
+              <ol className="grid gap-4 sm:grid-cols-2">
+                {chapter.levels.map((level, i) => {
                   const prog = levelProgress(state, level.id);
                   const unlocked = isUnlocked(state, ids, level.id);
                   return (
-                    <li key={level.id}>
+                    <li key={level.id} className="min-w-0">
                       <Link
                         href={unlocked ? `/play/${level.id}` : '#'}
                         aria-disabled={!unlocked}
-                        className={`panel flex items-center gap-3 p-3 ${unlocked ? '' : 'pointer-events-none opacity-45'}`}
+                        style={{
+                          ['--accent' as string]: CHAPTER_ACCENT[chapter.number % CHAPTER_ACCENT.length],
+                          ['--tilt' as string]: `${(i % 2 ? 1 : -1) * 0.7}deg`,
+                        }}
+                        className={`caper flex h-full items-center gap-3 p-4 ${
+                          unlocked ? 'lift' : 'locked faded pointer-events-none'
+                        }`}
                       >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-ink bg-pop text-lg font-black">
+                        <span className="badge text-lg">
                           {prog.completed ? '✓' : unlocked ? level.index : '🔒'}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-black">{level.title}</span>
-                          <span className="block truncate text-xs font-bold opacity-60">{level.goalText}</span>
+                          <span className="block truncate text-xs font-bold text-muted">{level.goalText}</span>
+                          {prog.completed && prog.bestSize !== null && (
+                            <span className="mt-1 inline-block rounded-full border-2 border-ink bg-cream px-2 text-[10px] font-black">
+                              {prog.bestSize} lines
+                            </span>
+                          )}
                         </span>
-                        {prog.completed && prog.bestSize !== null && (
-                          <span className="shrink-0 text-xs font-bold opacity-50">{prog.bestSize} lines</span>
-                        )}
+                        {/* Room for the accent blob in the corner. */}
+                        <span className="w-6 shrink-0" aria-hidden="true" />
                       </Link>
                     </li>
                   );
@@ -295,10 +326,10 @@ export function HomeScreen() {
             {Object.values(STICKERS).map((s) => {
               const owned = state.stickers.includes(s.id);
               return (
-                <div key={s.id} className={`panel p-3 text-center ${owned ? '' : 'opacity-35'}`}>
+                <div key={s.id} className={`panel p-3 text-center ${owned ? '' : 'faded'}`}>
                   <div className="text-4xl">{owned ? s.glyph : '❓'}</div>
                   <p className="mt-1 text-sm font-black">{owned ? s.name : '???'}</p>
-                  {owned && <p className="text-[11px] font-bold opacity-60">{s.blurb}</p>}
+                  {owned && <p className="text-[11px] font-bold text-muted">{s.blurb}</p>}
                 </div>
               );
             })}
@@ -308,7 +339,7 @@ export function HomeScreen() {
         {tab === 'cards' && (
           <div className="space-y-3">
             {state.clubCards.length === 0 && (
-              <p className="panel p-4 text-sm font-bold opacity-60">
+              <p className="panel p-4 text-sm font-bold text-muted">
                 No club cards yet. You get one each time you learn something that also shows up in Scratch.
               </p>
             )}
@@ -316,13 +347,13 @@ export function HomeScreen() {
               const card = BRIDGE_CARDS[id];
               if (!card) return null;
               return (
-                <div key={id} className="panel bg-sky-100 p-4">
+                <div key={id} className="panel p-4" style={{ background: 'color-mix(in srgb, var(--color-sky) 18%, white)' }}>
                   <p className="title text-sm">{card.title}</p>
-                  <pre className="my-2 overflow-x-auto rounded-lg bg-white/70 p-2 font-[family-name:var(--font-code)] text-xs">
+                  <pre className="my-2 overflow-x-auto rounded-lg bg-paper/70 p-2 font-[family-name:var(--font-code)] text-xs">
                     {card.youWrote}
                   </pre>
                   <p className="text-sm font-bold leading-snug">{card.body}</p>
-                  <p className="mt-2 text-xs font-bold opacity-60">
+                  <p className="mt-2 text-xs font-bold text-muted">
                     In Scratch: <span className="font-black">{card.scratchBlock}</span>
                   </p>
                 </div>
@@ -330,6 +361,13 @@ export function HomeScreen() {
             })}
           </div>
         )}
+
+        <footer className="panel mt-10 px-5 py-5 text-center">
+          <strong className="title block text-xl">Made with vibes</strong>
+          <span className="text-sm font-black text-muted">
+            By the Gilmores in Lower Hutt, Aotearoa New Zealand · gilmore.games
+          </span>
+        </footer>
       </div>
     </main>
   );
@@ -360,7 +398,8 @@ function SignIn({
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <main className="dots flex min-h-[100dvh] items-center justify-center p-4">
+    <main className="world flex items-center justify-center p-4">
+      <Landscape />
       {!chosen ? (
         <div className="panel w-full max-w-sm p-5">
           <h2 className="title mb-4 text-2xl">Who&apos;s playing?</h2>
@@ -370,7 +409,7 @@ function SignIn({
                 key={p.id}
                 type="button"
                 onClick={() => setChosen(p)}
-                className="chunk flex flex-col items-center gap-1 bg-white px-3 py-3"
+                className="chunk chunk-card flex flex-col items-center gap-1 bg-paper px-3 py-3"
               >
                 <Avatar who={p.avatar} size={52} />
                 <span className="font-black">{p.name}</span>
@@ -378,7 +417,7 @@ function SignIn({
             ))}
           </div>
           {onNewPlayer && (
-            <button type="button" onClick={onNewPlayer} className="chunk mt-3 w-full bg-white py-3">
+            <button type="button" onClick={onNewPlayer} className="chunk mt-3 w-full bg-paper py-3">
               ➕ Someone else
             </button>
           )}
@@ -466,7 +505,7 @@ function Players({
         </div>
 
         {!me && (
-          <button type="button" onClick={() => setClaiming(true)} className="chunk mb-2 w-full bg-emerald-400 py-3">
+          <button type="button" onClick={() => setClaiming(true)} className="chunk mb-2 w-full bg-hill py-3">
             Save my game to the cloud
           </button>
         )}
@@ -480,7 +519,7 @@ function Players({
                   key={p.id}
                   type="button"
                   onClick={() => onSwitch(p)}
-                  className="chunk flex flex-col items-center gap-1 bg-white px-3 py-3"
+                  className="chunk chunk-card flex flex-col items-center gap-1 bg-paper px-3 py-3"
                 >
                   <Avatar who={p.avatar} size={44} />
                   <span className="truncate font-black">{p.name}</span>
@@ -491,10 +530,10 @@ function Players({
         )}
 
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className="chunk bg-white px-4">
+          <button type="button" onClick={onClose} className="chunk bg-paper px-4">
             Back
           </button>
-          <button type="button" onClick={onAdd} className="chunk flex-1 bg-white py-3">
+          <button type="button" onClick={onAdd} className="chunk flex-1 bg-paper py-3">
             ➕ Add a player
           </button>
         </div>
@@ -546,7 +585,7 @@ function Rename({
         </div>
 
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className="chunk bg-white px-4">
+          <button type="button" onClick={onClose} className="chunk bg-paper px-4">
             Cancel
           </button>
           <button
@@ -556,7 +595,7 @@ function Rename({
               sfx.win();
               onSave(nextAgent.trim(), nextHq.trim(), nextAvatar);
             }}
-            className="chunk flex-1 bg-emerald-400 py-3 text-lg"
+            className="chunk flex-1 bg-hill py-3 text-lg"
           >
             Save
           </button>
@@ -590,7 +629,8 @@ function FirstRun({
 
   if (pickingCode) {
     return (
-      <main className="dots flex min-h-[100dvh] items-center justify-center p-4">
+      <main className="world flex items-center justify-center p-4">
+      <Landscape />
         <EmojiPin
           title="Pick a secret"
           subtitle="Four pictures, in an order you will remember. This is how you get back in on another device."
@@ -603,7 +643,8 @@ function FirstRun({
   }
 
   return (
-    <main className="dots flex min-h-[100dvh] items-center justify-center p-4">
+    <main className="world flex items-center justify-center p-4">
+      <Landscape />
       <div className="panel w-full max-w-md p-5">
         <p className="text-4xl">🤖</p>
         <h1 className="title mb-2 text-3xl">{heading ?? "Right. You're in."}</h1>
@@ -621,7 +662,7 @@ function FirstRun({
         />
         <div className="mb-4 flex flex-wrap gap-2">
           {AGENT_NAMES.map((n) => (
-            <button key={n} type="button" onClick={() => setAgent(n)} className="chunk bg-white px-3 text-sm">
+            <button key={n} type="button" onClick={() => setAgent(n)} className="chunk bg-paper px-3 text-sm">
               {n}
             </button>
           ))}
@@ -636,7 +677,7 @@ function FirstRun({
         />
         <div className="mb-5 flex flex-wrap gap-2">
           {HQ_NAMES.map((n) => (
-            <button key={n} type="button" onClick={() => setHq(n)} className="chunk bg-white px-3 text-sm">
+            <button key={n} type="button" onClick={() => setHq(n)} className="chunk bg-paper px-3 text-sm">
               {n}
             </button>
           ))}
@@ -649,7 +690,7 @@ function FirstRun({
 
         <div className="flex gap-2">
           {onCancel && (
-            <button type="button" onClick={onCancel} className="chunk bg-white px-4">
+            <button type="button" onClick={onCancel} className="chunk bg-paper px-4">
               Cancel
             </button>
           )}
@@ -661,7 +702,7 @@ function FirstRun({
               if (needsCode) setPickingCode(true);
               else onDone(agent.trim(), hq.trim(), avatar);
             }}
-            className="chunk flex-1 bg-emerald-400 py-3 text-lg"
+            className="chunk flex-1 bg-hill py-3 text-lg"
           >
             {needsCode ? 'Next →' : "Let's go →"}
           </button>

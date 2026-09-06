@@ -129,3 +129,54 @@ test('Casper does not inherit Henry\'s game, and Henry finds his on the phone', 
   await computer.close();
   await phone.close();
 });
+
+test('swapping back to a brother asks for his code, and signs him in properly', async ({ page }) => {
+  // Henry has been playing here since before there was a database.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'coderx.progress.v1',
+      JSON.stringify({
+        version: 1, agentName: 'Turbo', hqName: 'The Shed', avatar: 'sniff', xp: 640,
+        levels: { c1l1: { completed: true, attempts: 1, hintsUsed: 0, bestSize: 5, typedItHimself: true, lastCode: '' } },
+        stickers: ['sniff-badge'], clubCards: ['sequence'],
+        streak: { lastDay: '2026-09-05', count: 6, best: 6, freezes: 2 },
+        mastery: {}, sessions: {}, typedLines: 14, createdAt: '2026-08-01T00:00:00.000Z',
+      }),
+    );
+  });
+  await page.goto(BASE);
+  await expect(page.getByText('Agent Turbo')).toBeVisible();
+
+  // He puts his existing game in the cloud, keeping all of it.
+  await page.getByRole('button', { name: "Who's playing" }).click();
+  await page.getByRole('button', { name: /Save my game to the cloud/ }).click();
+  await tapPin(page, PIN);
+  await tapPin(page, PIN);
+  await expect(page.getByText('640 XP', { exact: false })).toBeVisible();
+
+  // Casper is added, and starts at nothing.
+  await page.getByRole('button', { name: "Who's playing" }).click();
+  await page.getByRole('button', { name: /Add a player/ }).click();
+  await fillFirstRun(page, 'Rocket', 'Bin HQ', 'The Dragon', OTHER_PIN);
+  await expect(page.getByText('Agent Rocket')).toBeVisible();
+  await expect(page.getByText('0 XP', { exact: false })).toBeVisible();
+
+  // Swapping back must ask for Henry's four. Before this was fixed it signed
+  // out and dropped whoever tapped it into the local game — which looks like
+  // it worked, plays like it worked, and syncs nothing.
+  await page.getByRole('button', { name: "Who's playing" }).click();
+  await page.getByRole('button', { name: /Turbo/ }).click();
+  await expect(page.getByText(/Hello again, Turbo/)).toBeVisible();
+
+  // Casper's code does not get him into his brother's game.
+  await tapPin(page, OTHER_PIN);
+  await expect(page.getByText(/Not those four/)).toBeVisible();
+
+  await tapPin(page, PIN);
+  await expect(page.getByText('Agent Turbo')).toBeVisible();
+  await expect(page.getByText('640 XP', { exact: false })).toBeVisible();
+
+  // And he is genuinely signed in, not just looking at local data.
+  await page.getByRole('button', { name: "Who's playing" }).click();
+  await expect(page.getByText(/saved to the cloud/)).toBeVisible();
+});

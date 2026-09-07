@@ -64,7 +64,14 @@ export interface Level {
   skills: SkillId[];
   /** Bolt's handwritten ladder. Also the fallback when the AI is unavailable. */
   hints: string[];
-  /** What he collects for finishing. */
-  reward: { xp: number; sticker: string };
+  /**
+   * What he collects for finishing.
+   *
+   * A story level names a sticker, because each one is a joke about that
+   * particular moment. Generated capers deliberately name none: nineteen
+   * hand-drawn stickers stay worth having, and nineteen thousand would not.
+   * They pay in XP, and in progress toward the crew badges.
+   */
+  reward: { xp: number; sticker?: string };
   bridgeCard?: string;
 }

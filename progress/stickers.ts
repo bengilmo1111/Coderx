@@ -1,10 +1,28 @@
-/** The collection. Cheap to produce, endlessly motivating, and the reason to come back. */
+/**
+ * The collection. Cheap to produce, endlessly motivating, and the reason to come
+ * back.
+ *
+ * Two kinds, and the difference matters more than it looks. A STORY sticker is a
+ * joke about one particular moment — "slightly chewed, he is very sorry" — and
+ * there can only ever be as many of those as there are moments somebody wrote.
+ * Generated capers must never mint them: nineteen hand-drawn stickers are worth
+ * having, and nineteen thousand are a spreadsheet.
+ *
+ * A CREW badge is earned by a pattern across many capers instead, which is the
+ * shape that survives infinite content. They are awarded on positive evidence
+ * only — there is no badge for a thing he cannot do yet — and none of them names
+ * a skill. He sees capers, not a report card.
+ */
+
+export type StickerKind = 'story' | 'crew';
 
 export interface Sticker {
   id: string;
   name: string;
   glyph: string;
   blurb: string;
+  /** Defaults to 'story'. */
+  kind?: StickerKind;
 }
 
 export const STICKERS: Record<string, Sticker> = {
@@ -29,6 +47,15 @@ export const STICKERS: Record<string, Sticker> = {
   'nested-loop': { id: 'nested-loop', name: 'A Loop Inside a Loop', glyph: '🌀', blurb: 'Most grown-ups find this hard.' },
   'own-command': { id: 'own-command', name: 'Your Own Command', glyph: '🏗️', blurb: 'You invented a word and the computer learned it.' },
   rebuilt: { id: 'rebuilt', name: 'Fully Rebuilt', glyph: '🤖', blurb: 'Now only 12% toaster.' },
+
+  // Crew badges. Earned across many capers, never by finishing any one of them.
+  // Kept deliberately few: the collection grid draws every unowned sticker as a
+  // locked slot, so each one added is a new empty square on his shelf.
+  'loop-wrangler': { id: 'loop-wrangler', name: 'Loop Wrangler', glyph: '🔁', kind: 'crew', blurb: 'Five capers, and the boring bit did itself every time.' },
+  'own-two-hands': { id: 'own-two-hands', name: 'Own Two Hands', glyph: '🖐️', kind: 'crew', blurb: 'Twenty-five lines typed with actual fingers.' },
+  'comeback-kid': { id: 'comeback-kid', name: 'Comeback Kid', glyph: '🪃', kind: 'crew', blurb: 'You went back to one that had beaten you, and beat it.' },
+  'clean-sweep': { id: 'clean-sweep', name: 'Clean Sweep', glyph: '🧹', kind: 'crew', blurb: 'Three capers, no help asked for. Not that asking costs anything.' },
+  'street-regular': { id: 'street-regular', name: 'Kea Street Regular', glyph: '🏘️', kind: 'crew', blurb: 'Ten capers done. The neighbours know your dog by name.' },
 };
 
 export function stickerList(ids: string[]): Sticker[] {

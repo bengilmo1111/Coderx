@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ALL_LEVELS, CHAPTERS } from '@/curriculum/levels';
+import { getLevel } from '@/curriculum/levels';
+import { suggestCapers } from '@/curriculum/suggest';
 import { BRIDGE_CARDS } from '@/curriculum/bridgeCards';
 import { STICKERS } from '@/progress/stickers';
 import { isUnlocked, levelProgress } from '@/progress/store';
@@ -35,6 +37,10 @@ export function HomeScreen() {
   const [players, setPlayers] = useState(false);
   const [adding, setAdding] = useState(false);
   const [signingIn, setSigningIn] = useState<{ id: string; name: string; avatar: string } | null>(null);
+  // A choice of two or three capers, pitched either side of where he is.
+  // Above the early returns below, because this screen is also the sign-in
+  // wizard and a hook that only sometimes runs is not a hook.
+  const capers = useMemo(() => suggestCapers(state), [state]);
 
   if (!ready) return <div className="p-6 text-center font-black opacity-40">Loading HQ…</div>;
 
@@ -261,6 +267,32 @@ export function HomeScreen() {
             </button>
           ))}
         </nav>
+
+        {tab === 'capers' && capers.length > 0 && (
+          <section className="mb-5">
+            <h2 className="title mb-2 text-lg opacity-70">Today&rsquo;s capers</h2>
+            <ol className="space-y-3">
+              {capers.map((id) => {
+                const caper = getLevel(id);
+                if (!caper) return null;
+                const prog = levelProgress(state, id);
+                return (
+                  <li key={id}>
+                    <Link href={`/play/${id}`} className="panel flex items-center gap-3 bg-white p-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-ink bg-pop/60 text-lg">
+                        {prog.completed ? '\u2713' : '\u2b50\ufe0f'}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-black">{caper.title}</span>
+                        <span className="block truncate text-xs font-bold opacity-60">{caper.goalText}</span>
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        )}
 
         {tab === 'capers' && (
           <Link

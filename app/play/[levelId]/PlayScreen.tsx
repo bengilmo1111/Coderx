@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import { CodeList } from '@/editor/CodeList';
 import { BrickBar } from '@/editor/BrickBar';
-import { HolePicker } from '@/editor/HolePicker';
+import { HolePicker, WORD_BANK } from '@/editor/HolePicker';
 import { BRICKS, bricksFor, type Brick } from '@/editor/bricks';
 import { countStmts, definedNames, findStmt, firstHole, getArg, insertStmt, missingRequirement, moveStmt, removeStmt, setArg, wrapStmt, type ArgIndex, type Selection } from '@/editor/program';
 
@@ -23,10 +23,12 @@ import { RewardPanel } from '@/components/RewardPanel';
 import { usePlayback } from '@/lib/usePlayback';
 import { useProgress } from '@/lib/useProgress';
 import { sfx, loadMutePreference, setMuted } from '@/lib/sound';
+import { bankWordsIn, flush, observe } from '@/lib/observe';
 
 import { getLevel, nextLevelId } from '@/curriculum/levels';
 import { awardsFor, rankFor, type Award } from '@/progress/xp';
 import { addMinutes, collect, collectCard, levelProgress, recordSkillAttempt, setLevelProgress } from '@/progress/store';
+import { newBadges } from '@/progress/badges';
 
 const DIRECTIONS = ['up', 'down', 'left', 'right'];
 const MODE_NAMES = ['robot', 'drill', 'jet', 'magnet'];
@@ -72,16 +74,64 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   const [hintsUsed, setHintsUsed] = useState(0);
   const [tookDare, setTookDare] = useState(false);
   const [awards, setAwards] = useState<Award[] | null>(null);
+  const [earnedBadge, setEarnedBadge] = useState<string | null>(null);
   const [muted, setMutedState] = useState(false);
   const [banner, setBanner] = useState<CoderXError | null>(null);
 
   const settled = useRef(false);
+  /** When he arrived. Time-to-first-hint is the sharpest signal a level is over-pitched. */
+  const arrivedAt = useRef(Date.now());
+  /** Latest snapshot, so the abandon record on unmount does not re-run the effect. */
+  const latest = useRef({ ran: false, won: false, size: 0, hintsUsed: 0 });
+  const abandonRecorded = useRef(false);
   const world = useMemo(() => level.makeWorld(), [level]);
   const cast = useMemo(() => level.commandable ?? ['sniff'], [level]);
   /** Commands he has defined in this program — each becomes a brick of its own. */
   const defined = useMemo(() => definedNames(program), [program]);
 
   useEffect(() => setMutedState(loadMutePreference()), []);
+
+  // A snapshot for the record on the way out. Held in a ref so watching it does
+  // not re-register the listener on every tap.
+  useEffect(() => {
+    latest.current = { ...latest.current, size: countStmts(program), hintsUsed };
+  }, [program, hintsUsed]);
+
+  /**
+   * Where he gives up.
+   *
+   * The level he closes without finishing says more than the one he finishes
+   * slowly. A child closes the lid; he does not navigate away politely, so this
+   * fires on the way out AND when the tab is hidden, and flushes immediately.
+   */
+  useEffect(() => {
+    if (level.sandbox) return; // free play has nothing to abandon
+    const record = () => {
+      const { ran, won, size, hintsUsed: hints } = latest.current;
+      if (abandonRecorded.current || won || size === 0) return;
+      abandonRecorded.current = true;
+      observe({
+        kind: 'abandon',
+        levelId: level.id,
+        skillIds: level.skills,
+        payload: {
+          size,
+          hintsUsed: hints,
+          ranIt: ran,
+          secondsOnLevel: Math.round((Date.now() - arrivedAt.current) / 1000),
+        },
+      });
+      void flush();
+    };
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') record();
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      record();
+    };
+  }, [level]);
 
   // Time on task, for the parent view. Counted while he is actually on a level.
   useEffect(() => {
@@ -117,6 +167,10 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   };
 
   const tapBrick = (brick: Brick) => {
+    // Which brick he reaches for, before anything is decided about whether it
+    // helped. Ignoring a brick that would have helped says as much as using one.
+    observe({ kind: 'brick_used', levelId: level.id, skillIds: level.skills, payload: { brick: brick.id } });
+
     // Naming happens as the command is created, so there is never a nameless
     // definition sitting on screen waiting to be filled in.
     if (brick.id === 'define') {
@@ -149,6 +203,9 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   const nameNewCommand = (value: Expr) => {
     setNaming(false);
     if (value.kind !== 'str' || !value.value) return;
+    // The length, never the name. Naming a command is the one place he writes
+    // a word of his own into the program.
+    observe({ kind: 'defined_command', levelId: level.id, payload: { length: value.value.length } });
     const stmt: Stmt = { kind: 'define', id: `d${Date.now()}`, name: value.value, body: [] };
     setProgram(insertStmt(program, selection, stmt));
     setSelection({ stmtId: stmt.id, closer: false });
@@ -156,6 +213,16 @@ export function PlayScreen({ levelId }: { levelId: string }) {
 
   const fillHole = (value: Expr) => {
     if (!picker) return;
+    // Words he TAPPED from the bank are data we chose, so they are safe to keep
+    // as an interest signal. Words he typed himself are his, and are not recorded.
+    if (value.kind === 'str') {
+      for (const word of bankWordsIn(value.value, WORD_BANK)) {
+        observe({ kind: 'word_chosen', levelId: level.id, payload: { word } });
+      }
+    }
+    if (picker.slot === 'mode' && value.kind === 'ident') {
+      observe({ kind: 'mode_used', levelId: level.id, payload: { mode: value.name } });
+    }
     const next = setArg(program, picker.stmtId, picker.index, value);
     setProgram(next);
 
@@ -183,6 +250,8 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       }
       setProgram(next);
       setSelection(sel);
+      // How much he typed, never what. Readiness for the keyboard is the signal.
+      observe({ kind: 'typed_line', levelId: level.id, payload: { lines: parsed.length, chars: text.length } });
       setTypedLines((n) => n + parsed.length);
       setTypedDraft('');
       setTyping(false);
@@ -279,11 +348,35 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       if (!earned) return next;
 
       next = { ...next, xp: next.xp + earned.reduce((n, a) => n + a.xp, 0) };
-      next = collect(next, level.reward.sticker);
+      // A generated caper names no sticker — the collection stays hand-written,
+      // and pays out instead through the crew badges below.
+      if (level.reward.sticker) next = collect(next, level.reward.sticker);
       if (typedLines > 0) next = collect(next, 'typing-trophy');
       if (level.bridgeCard) next = collectCard(next, level.bridgeCard);
       return next;
     });
+
+    // The record of what happened. An observation, never a conclusion:
+    // docs/memory-loop.md is explicit that judgements get derived at read time.
+    observe({
+      kind: 'level_attempt',
+      levelId: level.id,
+      skillIds: level.skills,
+      payload: {
+        won,
+        firstTime: won && !before.completed,
+        attempt: before.attempts + 1,
+        size,
+        par: level.par,
+        hintsUsed,
+        typedLines,
+        tookDare,
+        errored: Boolean(runResult.error),
+        missedConstruct: Boolean(missing),
+        secondsOnLevel: Math.round((Date.now() - arrivedAt.current) / 1000),
+      },
+    });
+    latest.current = { ...latest.current, ran: true, won: latest.current.won || won, size, hintsUsed };
 
     if (earned) {
       setAwards(earned);
@@ -294,8 +387,35 @@ export function PlayScreen({ levelId }: { levelId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playback.done, runResult, ready, level, program, hintsUsed, typedLines, tookDare, update]);
 
+  /**
+   * Crew badges.
+   *
+   * Earned by a pattern across many capers rather than by finishing this one,
+   * so they are checked against the whole state — and out here rather than
+   * inside an updater, which React is free to run more than once.
+   */
+  useEffect(() => {
+    if (!ready) return;
+    const fresh = newBadges(state);
+    if (!fresh.length) return;
+    setEarnedBadge((b) => b ?? fresh[0]);
+    update((p) => {
+      let next = p;
+      for (const id of fresh) next = collect(next, id);
+      return next;
+    });
+  }, [state, ready, update]);
+
   const replay = () => {
+    // Only a genuine replay counts. Retrying something he has not beaten yet is
+    // persistence, not preference, and the attempt record already carries it.
+    if (levelProgress(state, level.id).completed) {
+      observe({ kind: 'replay', levelId: level.id, skillIds: level.skills });
+    }
+    arrivedAt.current = Date.now();
+    abandonRecorded.current = false;
     setAwards(null);
+    setEarnedBadge(null);
     settled.current = false;
     setRunResult(null);
     setHintsUsed(0);
@@ -307,6 +427,18 @@ export function PlayScreen({ levelId }: { levelId: string }) {
   };
 
   const onAsked = (intent: Intent) => {
+    // Time-to-first-hint is the signal: falling fast means the level is
+    // over-pitched. Never asking may mean too easy — or that asking feels costly.
+    observe({
+      kind: intent === 'sillier' ? 'dare' : 'hint',
+      levelId: level.id,
+      skillIds: level.skills,
+      payload: {
+        intent,
+        nth: hintsUsed + 1,
+        secondsIn: Math.round((Date.now() - arrivedAt.current) / 1000),
+      },
+    });
     if (intent === 'stuck' || intent === 'broke') setHintsUsed((n) => n + 1);
     if (intent === 'sillier') setTookDare(true);
   };
@@ -588,7 +720,7 @@ export function PlayScreen({ levelId }: { levelId: string }) {
       {awards && (
         <RewardPanel
           awards={awards}
-          sticker={level.reward.sticker}
+          sticker={level.reward.sticker ?? earnedBadge ?? undefined}
           bridgeCard={level.bridgeCard}
           nextHref={nextLevelId(level.id) ? `/play/${nextLevelId(level.id)}` : undefined}
           onReplay={replay}

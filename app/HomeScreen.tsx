@@ -104,7 +104,8 @@ export function HomeScreen() {
           update((p) => ({ ...p, agentName, hqName, avatar }));
           if (sync.enabled && pin) {
             await createProfile({ name: agentName, hqName, avatar, pin });
-            await refreshSync();
+            // Creating a profile IS a claim on this device's game.
+            await refreshSync(true);
           }
         }}
       />
@@ -230,7 +231,7 @@ export function HomeScreen() {
             });
             if (res.ok) {
               setPlayers(false);
-              await refreshSync();
+              await refreshSync(true);
             }
             return res.ok;
           }}

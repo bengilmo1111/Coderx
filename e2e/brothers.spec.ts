@@ -180,3 +180,71 @@ test('swapping back to a brother asks for his code, and signs him in properly', 
   await page.getByRole('button', { name: "Who's playing" }).click();
   await expect(page.getByText(/saved to the cloud/)).toBeVisible();
 });
+
+test('signing in on a device with somebody else\'s game does not adopt it', async ({ browser }) => {
+  // Henry's profile, with real progress, made on the family computer.
+  const computer = await browser.newContext();
+  const c = await computer.newPage();
+  await c.goto(BASE);
+  await fillFirstRun(c, 'Turbo', 'The Shed', 'Sniff', PIN);
+  await expect(c.getByText('Agent Turbo')).toBeVisible();
+  // Real progress, earned the way he earns it.
+  await c.getByRole('link', { name: /Sniff Reports for Duty/ }).click();
+  await c.getByRole('button', { name: 'On it' }).click();
+  const picker = c.getByTestId('hole-picker');
+  const right = async () => {
+    await c.getByRole('button', { name: 'move', exact: true }).click();
+    await picker.getByRole('button', { name: '➡︎' }).click();
+  };
+  await right();
+  await c.getByRole('button', { name: 'grab', exact: true }).click();
+  await right();
+  await right();
+  await c.getByRole('button', { name: 'drop', exact: true }).click();
+  await c.getByRole('button', { name: /Run it/ }).click();
+  await expect(c.getByRole('heading', { name: 'Nailed it!' })).toBeVisible({ timeout: 25_000 });
+  await c.goto(BASE);
+  await c.waitForTimeout(5000); // let the debounced push land
+  const earned = Number(((await c.getByText(/^\d+ XP/).first().textContent()) || '').split(' ')[0]);
+  expect(earned).toBeGreaterThan(0);
+
+  /*
+   * Dad's phone, exactly as it really was: a game sitting in the OLD single
+   * storage key from before per-profile slots existed, so it carries no record
+   * of having been claimed.
+   *
+   * Henry signed in here and was handed that game — somebody else's name,
+   * somebody else's XP — and the merge pushed it up into his row. Signing in
+   * is not a claim on whatever the device was already playing.
+   */
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await phone.addInitScript(() => {
+    localStorage.setItem(
+      'coderx.progress.v1',
+      JSON.stringify({
+        version: 1, agentName: 'zack', hqName: 'Bin HQ', avatar: 'bolt', xp: 310,
+        levels: {}, stickers: ['sniff-badge'], clubCards: [],
+        streak: { lastDay: '2026-09-05', count: 2, best: 2, freezes: 2 },
+        mastery: {}, sessions: {}, typedLines: 0, createdAt: '2026-08-20T00:00:00.000Z',
+      }),
+    );
+  });
+  const m = await phone.newPage();
+  await m.goto(BASE);
+  await expect(m.getByText('Agent zack')).toBeVisible();
+
+  await m.getByRole('button', { name: "Who's playing" }).click();
+  await m.getByRole('button', { name: /Turbo/ }).click();
+  await expect(m.getByText(/Hello again, Turbo/)).toBeVisible();
+  await tapPin(m, PIN);
+
+  // His own game, not the one the phone was already carrying.
+  await expect(m.getByText('Agent Turbo')).toBeVisible();
+  await expect(m.getByText('Agent zack')).toHaveCount(0);
+  const shown = Number(((await m.getByText(/^\d+ XP/).first().textContent()) || '').split(' ')[0]);
+  expect(shown).toBe(earned);
+  expect(shown).not.toBe(310);
+
+  await computer.close();
+  await phone.close();
+});

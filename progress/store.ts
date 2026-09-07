@@ -159,11 +159,22 @@ class LocalStore implements ProgressStore {
 
     const own = readSlot(keyFor(profileId));
     if (!isUntouched(own)) return own;
-    // Adding a second player is the one case where we know the progress on this
-    // device is somebody else's. Casper says so by arriving through "someone
-    // else", and the caller writes his name into the slot immediately after,
-    // so this decision does not have to be remembered.
-    if (options?.adopt === false) return own;
+
+    /*
+     * Adoption is opt-in, and only a profile being CREATED may ask for it.
+     *
+     * Signing in is not a claim. Henry signed into his own profile on his dad's
+     * phone and was handed the test game left in that phone's anonymous slot,
+     * because the slot carried no record of having been claimed — it predated
+     * the claim marker existing at all. He got somebody else's name, somebody
+     * else's XP, and the merge pushed it up into his row.
+     *
+     * Creating a profile is a claim: "save the game I am playing right now".
+     * Signing in means the game is already on the server, and whatever is
+     * sitting in this device's anonymous slot belongs to whoever used the
+     * device before — which is exactly nothing to do with the person arriving.
+     */
+    if (options?.adopt !== true) return own;
 
     try {
       const claimedBy = window.localStorage.getItem(CLAIM_KEY);

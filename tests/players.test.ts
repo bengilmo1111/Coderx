@@ -74,7 +74,7 @@ describe('one device, two children', () => {
     const mod = await freshBrowser();
     const { store, emptyProgress } = mod;
 
-    store.use('henry');
+    store.use('henry', { adopt: true });
     store.save({ ...emptyProgress(), agentName: 'Turbo', xp: 420 });
 
     store.use('casper', { adopt: false });
@@ -92,8 +92,8 @@ describe('one device, two children', () => {
     store.use(null);
     store.save(henrysGame(mod));
 
-    // He signs in first, so all of it becomes his profile's.
-    const henry = store.use('henry');
+    // He creates his profile from it, which IS a claim on this device's game.
+    const henry = store.use('henry', { adopt: true });
     expect(henry.xp).toBe(420);
     expect(henry.stickers).toEqual(['kea-feather', 'sniff-badge']);
 
@@ -105,26 +105,42 @@ describe('one device, two children', () => {
     expect(casper.agentName).toBe('');
   });
 
-  it('adopts the pre-profile game exactly once, whoever gets there first', async () => {
+  it('hands the pre-profile game to whoever claims it, and only once', async () => {
     const mod = await freshBrowser();
     const { store } = mod;
     store.use(null);
     store.save(henrysGame(mod));
 
-    expect(store.use('casper').xp).toBe(420); // first in wins it
-    expect(store.use('henry').xp).toBe(0); // and it is not handed out twice
+    expect(store.use('casper', { adopt: true }).xp).toBe(420); // first to claim wins it
+    expect(store.use('henry', { adopt: true }).xp).toBe(0); // not handed out twice
   });
 
-  it('never adopts for a player who arrived through "someone else"', async () => {
+  /**
+   * The one that bit for real.
+   *
+   * Henry signed into his own profile on his dad's phone and was handed the
+   * test game that phone was already carrying — somebody else's name, somebody
+   * else's XP — because that game predated the claim marker and so looked
+   * unclaimed. Signing in is not a claim on whatever the device was playing.
+   */
+  it('never adopts on a plain sign-in, however unclaimed the device looks', async () => {
     const mod = await freshBrowser();
     const { store } = mod;
+
+    // A game left on this device by somebody else, with no claim recorded —
+    // exactly what a browser that used the app before profiles existed holds.
     store.use(null);
     store.save(henrysGame(mod));
 
-    // Nobody has claimed anything yet, but Casper said plainly this is not his.
-    expect(store.use('casper', { adopt: false }).xp).toBe(0);
-    // And Henry can still claim what is genuinely his afterwards.
-    expect(store.use('henry').xp).toBe(420);
+    const arriving = store.use('casper');
+    expect(arriving.xp).toBe(0);
+    expect(arriving.agentName).toBe('');
+
+    // Explicitly declining is the same answer.
+    expect(store.use('meatball', { adopt: false }).xp).toBe(0);
+
+    // And the game is still there for whoever genuinely claims it.
+    expect(store.use('henry', { adopt: true }).xp).toBe(420);
   });
 
   it('keeps a profile at its own progress once it has some', async () => {

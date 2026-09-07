@@ -101,8 +101,8 @@ export function useProgress() {
    * brother's game, and the merge takes the better of two values rather than
    * asking, so Casper would quietly inherit Henry's four hundred XP.
    */
-  const adopt = useCallback(async (profileId: string) => {
-    const mine = store.use(profileId);
+  const adopt = useCallback(async (profileId: string, claimThisDevice = false) => {
+    const mine = store.use(profileId, { adopt: claimThisDevice });
     const remote = await pullProgress();
     const merged = remote ? mergeProgress({ ...emptyProgress(), ...remote }, mine) : mine;
     store.save(merged);
@@ -111,13 +111,19 @@ export function useProgress() {
     if (confirmed) setSync((s) => ({ ...s, lastSyncedAt: new Date().toISOString() }));
   }, []);
 
-  /** After signing in, creating a profile, or signing out. */
-  const refreshSync = useCallback(async () => {
+  /**
+   * After signing in, creating a profile, or signing out.
+   *
+   * `claimThisDevice` is passed only by the two paths that CREATE a profile,
+   * which are the only ones entitled to take over the game already sitting on
+   * this device. Signing in never is.
+   */
+  const refreshSync = useCallback(async (claimThisDevice = false) => {
     const status = await fetchStatus();
     setSync(status);
     setSyncChecked(true);
     if (status.signedIn && status.profile) {
-      await adopt(status.profile.id);
+      await adopt(status.profile.id, claimThisDevice);
       return;
     }
     // Signed out: stop writing to whoever's slot we were in, and show the
